@@ -9,6 +9,7 @@ import Documents from "./pages/Documents"
 import Tickets from "./pages/Tickets"
 import Invoices from "./pages/Invoices"
 import Demands from "./pages/Demands"
+import Expenses from "./pages/Expenses"
 import Clients from "./pages/Clients"
 import ActivityPage from "./pages/Activity"
 import Meetings from "./pages/Meetings"
@@ -46,6 +47,7 @@ function App() {
           <Route path="/tickets" element={<Tickets />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/demands" element={<Demands />} />
+          <Route path="/expenses" element={<Expenses />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/activity" element={<ActivityPage />} />
           <Route path="/meetings" element={<Meetings />} />

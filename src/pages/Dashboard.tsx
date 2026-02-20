@@ -36,6 +36,7 @@ import { useTasks } from '../api/tasks/hooks';
 import { useDepartments } from '../api/departments/hooks';
 import { useLogs } from '../api/logs/hooks';
 import { useInvoiceStats } from '../api/invoices/hooks';
+import { useExpenseStats } from '../api/expenses/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 
 type DatePreset = 'today' | 'this_week' | 'this_month' | 'this_year' | 'custom';
@@ -96,6 +97,7 @@ const Dashboard = () => {
   const { data: apiDepartments, isLoading: loadingDepartments } = useDepartments();
   const { data: apiLogs, isLoading: loadingLogs } = useLogs(from, to);
   const { data: invoiceStats } = useInvoiceStats(deptScope, from, to);
+  const { data: expenseStats } = useExpenseStats();
 
   const isLoading = loadingEmployees || loadingProjects || loadingTasks || loadingDepartments || loadingLogs;
 
@@ -108,8 +110,8 @@ const Dashboard = () => {
 
   const formatFCFA = (amount: number) => new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
   const revenue = invoiceStats?.totalRevenue ?? 0;
-  const totalBudget = (apiProjects || []).reduce((sum, p) => sum + (p.budget || 0), 0);
-  const profit = revenue - totalBudget;
+  const totalExpenses = (expenseStats?.totalYear ?? 0) + (expenseStats?.totalSalaries ?? 0) + (expenseStats?.totalProjects ?? 0);
+  const profit = revenue - totalExpenses;
   const pending = invoiceStats?.totalPending ?? 0;
 
   const stats = [
@@ -118,7 +120,7 @@ const Dashboard = () => {
     { title: t('dashboard.stats.tasksCompleted'), value: String(tasksCompleted), change: '+0%', icon: CheckCircle, color: '#3a5175', link: '/tasks' },
     { title: t('dashboard.stats.efficiency'), value: `${efficiency}%`, change: '+0%', icon: TrendingUp, color: '#445d86' },
     { title: t('dashboard.stats.revenue'), value: formatFCFA(revenue), change: '+0%', icon: DollarSign, color: '#4d6a98' },
-    { title: t('dashboard.stats.expenses'), value: formatFCFA(totalBudget), change: '+0%', icon: CreditCard, color: '#5676a9' },
+    { title: t('dashboard.stats.expenses'), value: formatFCFA(totalExpenses), change: '+0%', icon: CreditCard, color: '#5676a9', link: '/expenses' },
     { title: t('dashboard.stats.profit'), value: formatFCFA(profit), change: profit >= 0 ? '+0%' : '-0%', icon: Coins, color: '#6083bb' },
     { title: t('dashboard.stats.pending'), value: formatFCFA(pending), change: '+0%', icon: Clock, color: '#698fcc' },
   ];

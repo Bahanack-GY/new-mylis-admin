@@ -23,7 +23,7 @@ export interface Demand {
     createdAt: string;
     updatedAt: string;
     items: DemandItem[];
-    employee?: { id: string; firstName: string; lastName: string; avatarUrl: string };
+    employee?: { id: string; firstName: string; lastName: string; avatarUrl: string; userId: string };
     department?: { id: string; name: string };
 }
 

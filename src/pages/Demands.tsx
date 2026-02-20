@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     HandCoins,
@@ -18,8 +19,10 @@ import {
     Package,
     ExternalLink,
     AlertTriangle,
+    MessageSquare,
 } from 'lucide-react';
 import { useDemands, useDemandStats, useValidateDemand, useRejectDemand } from '../api/demands/hooks';
+import { useCreateDM, useSendMessage } from '../api/chat/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 import type { Demand, DemandImportance } from '../api/demands/types';
 
@@ -67,15 +70,46 @@ const DemandDetailModal = ({
     onClose: () => void;
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const validateDemand = useValidateDemand();
     const rejectDemand = useRejectDemand();
+    const createDM = useCreateDM();
+    const sendMessage = useSendMessage();
     const [showRejectInput, setShowRejectInput] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [startingChat, setStartingChat] = useState(false);
 
     const isPending = demand.status === 'PENDING';
     const itemCount = demand.items?.length || 0;
     const firstItemName = demand.items?.[0]?.name || '—';
+
+    const handleStartChat = async () => {
+        if (!demand.employee?.userId) return;
+        setStartingChat(true);
+        try {
+            const channel = await createDM.mutateAsync(demand.employee.userId);
+            // Build a structured demand card message
+            const cardPayload = JSON.stringify({
+                demandId: demand.id,
+                items: (demand.items || []).map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                })),
+                totalPrice: demand.totalPrice,
+                importance: demand.importance,
+                status: demand.status,
+            });
+            sendMessage(channel.id, `[DEMAND_CARD:${cardPayload}]`);
+            onClose();
+            navigate('/messages');
+        } catch {
+            // silent
+        } finally {
+            setStartingChat(false);
+        }
+    };
 
     return (
         <motion.div
@@ -244,7 +278,19 @@ const DemandDetailModal = ({
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3 shrink-0">
+                    {/* Start Chat — always available */}
+                    {demand.employee?.userId && (
+                        <button
+                            disabled={startingChat}
+                            onClick={handleStartChat}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-[#33cbcc] bg-[#33cbcc]/10 hover:bg-[#33cbcc]/20 transition-colors mr-auto"
+                        >
+                            {startingChat ? <Loader2 size={16} className="animate-spin" /> : <MessageSquare size={16} />}
+                            {t('demands.startChat')}
+                        </button>
+                    )}
+
                     {isPending && !showRejectInput && (
                         <>
                             <button
@@ -301,7 +347,7 @@ const DemandDetailModal = ({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => setLightboxUrl(null)}
-                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-8"
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-8"
                     >
                         <button
                             onClick={() => setLightboxUrl(null)}

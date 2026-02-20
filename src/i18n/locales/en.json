@@ -391,6 +391,7 @@
     "activity": "Activity",
     "meetings": "Meetings",
     "invoices": "Invoices",
+    "expenses": "Expenses",
     "clients": "Clients",
     "settings": "Settings",
     "messages": "Messages",
@@ -1355,6 +1356,8 @@
     "confirmReject": "Confirm Reject",
     "cancel": "Cancel",
     "close": "Close",
+    "startChat": "Start Chat",
+    "chatIntroMessage": "Conversation started for your demand: {{items}}",
     "status": {
       "pending": "Pending",
       "validated": "Validated",
