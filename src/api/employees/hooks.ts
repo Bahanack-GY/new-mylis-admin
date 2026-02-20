@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeesApi } from './api';
-import type { CreateEmployeeDto, UpdateEmployeeDto, LeaderboardEmployee } from './types';
+import type { CreateEmployeeDto, UpdateEmployeeDto} from './types';
 
 export const employeeKeys = {
     all: ['employees'] as const,
