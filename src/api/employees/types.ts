@@ -44,3 +44,14 @@ export interface CreateEmployeeDto {
 }
 
 export type UpdateEmployeeDto = Partial<CreateEmployeeDto>;
+
+export interface LeaderboardEmployee {
+    id: string;
+    rank: number;
+    firstName: string;
+    lastName: string;
+    avatarUrl: string | null;
+    department: string;
+    positionTitle: string;
+    points: number;
+}

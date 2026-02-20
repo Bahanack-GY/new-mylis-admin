@@ -17,6 +17,13 @@ import {
     CheckCircle,
     XCircle,
     Package,
+    Paperclip,
+    Download,
+    FileText,
+    FileSpreadsheet,
+    File as FileIcon,
+    Image as ImageIcon,
+    Eye,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,9 +39,10 @@ import {
     useMembers,
     useCreateDM,
     useChatUsers,
+    useUploadFiles,
 } from '../api/chat/hooks';
 import { useValidateDemand, useRejectDemand } from '../api/demands/hooks';
-import type { Channel, ChatMessage, ChannelMember } from '../api/chat/types';
+import type { Channel, ChatMessage, ChatAttachment, ChannelMember } from '../api/chat/types';
 
 /* ─── Helpers ──────────────────────────────────────────── */
 
@@ -89,6 +97,28 @@ function scrollToMessage(messageId: string) {
     }
 }
 
+function formatFileSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} o`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+}
+
+function isImageType(fileType: string) {
+    return fileType.startsWith('image/');
+}
+
+function isPdfType(fileType: string) {
+    return fileType === 'application/pdf';
+}
+
+function getFileIcon(fileType: string) {
+    if (isImageType(fileType)) return ImageIcon;
+    if (isPdfType(fileType)) return FileText;
+    if (fileType.includes('spreadsheet') || fileType.includes('excel') || fileType.includes('csv')) return FileSpreadsheet;
+    if (fileType.includes('word') || fileType.includes('document')) return FileText;
+    return FileIcon;
+}
+
 const DEMAND_CARD_RE = /^\[DEMAND_CARD:(.+)\]$/s;
 
 const formatFCFA = (amount: number) =>
@@ -123,6 +153,7 @@ const DemandCardBubble = ({
     senderName: string;
 }) => {
     const { t } = useTranslation();
+    const { socket } = useSocket();
     const validateDemand = useValidateDemand();
     const rejectDemand = useRejectDemand();
     const [actionTaken, setActionTaken] = useState<'VALIDATED' | 'REJECTED' | null>(null);
@@ -134,7 +165,11 @@ const DemandCardBubble = ({
 
     const handleValidate = () => {
         validateDemand.mutate(data.demandId, {
-            onSuccess: () => setActionTaken('VALIDATED'),
+            onSuccess: () => {
+                setActionTaken('VALIDATED');
+                // Notify all channel members (including user) of the status change
+                socket?.emit('demand:statusUpdate', { demandId: data.demandId, status: 'VALIDATED' });
+            },
         });
     };
 
@@ -143,6 +178,8 @@ const DemandCardBubble = ({
             onSuccess: () => {
                 setActionTaken('REJECTED');
                 setShowRejectInput(false);
+                // Notify all channel members (including user) of the status change
+                socket?.emit('demand:statusUpdate', { demandId: data.demandId, status: 'REJECTED' });
             },
         });
     };
@@ -518,6 +555,203 @@ const MentionDropdown = ({
     );
 };
 
+/* ─── Image Lightbox ───────────────────────────────────── */
+
+const ImageLightbox = ({
+    src,
+    fileName,
+    onClose,
+}: {
+    src: string;
+    fileName: string;
+    onClose: () => void;
+}) => (
+    <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    >
+        <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={e => e.stopPropagation()}
+            className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center"
+        >
+            <div className="absolute -top-10 right-0 flex items-center gap-2">
+                <a
+                    href={src}
+                    download={fileName}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <Download size={18} />
+                </a>
+                <button onClick={onClose} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white">
+                    <X size={18} />
+                </button>
+            </div>
+            <img src={src} alt={fileName} className="max-w-full max-h-[85vh] rounded-lg object-contain" />
+            <p className="text-white/70 text-sm mt-2">{fileName}</p>
+        </motion.div>
+    </motion.div>
+);
+
+/* ─── Attachment Renderer ─────────────────────────────── */
+
+const AttachmentRenderer = ({
+    attachments,
+    isOwn,
+}: {
+    attachments: ChatAttachment[];
+    isOwn: boolean;
+}) => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const [lightboxSrc, setLightboxSrc] = useState<{ src: string; name: string } | null>(null);
+    const [pdfPreview, setPdfPreview] = useState<{ src: string; name: string } | null>(null);
+
+    return (
+        <>
+            <div className="flex flex-col gap-1.5 mt-1">
+                {attachments.map((att, i) => {
+                    const fileUrl = att.filePath.startsWith('http') ? att.filePath : `${apiUrl}${att.filePath}`;
+
+                    if (isImageType(att.fileType)) {
+                        return (
+                            <div key={i} className="relative group/att">
+                                <img
+                                    src={fileUrl}
+                                    alt={att.fileName}
+                                    className="max-w-[280px] max-h-[200px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setLightboxSrc({ src: fileUrl, name: att.fileName })}
+                                />
+                                <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover/att:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => setLightboxSrc({ src: fileUrl, name: att.fileName })}
+                                        className="p-1 rounded bg-black/50 text-white hover:bg-black/70"
+                                    >
+                                        <Eye size={14} />
+                                    </button>
+                                    <a
+                                        href={fileUrl}
+                                        download={att.fileName}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 rounded bg-black/50 text-white hover:bg-black/70"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        <Download size={14} />
+                                    </a>
+                                </div>
+                                <p className="text-[10px] mt-0.5 opacity-60 truncate max-w-[280px]">{att.fileName}</p>
+                            </div>
+                        );
+                    }
+
+                    if (isPdfType(att.fileType)) {
+                        return (
+                            <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg ${isOwn ? 'bg-white/10' : 'bg-gray-200/60'} max-w-[300px]`}>
+                                <FileText size={20} className="text-red-500 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-xs font-medium truncate ${isOwn ? 'text-white' : 'text-gray-700'}`}>{att.fileName}</p>
+                                    <p className={`text-[10px] ${isOwn ? 'text-white/50' : 'text-gray-400'}`}>{formatFileSize(att.size)}</p>
+                                </div>
+                                <button
+                                    onClick={() => setPdfPreview({ src: fileUrl, name: att.fileName })}
+                                    className={`p-1 rounded hover:bg-black/10 ${isOwn ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                                    title="Aperçu"
+                                >
+                                    <Eye size={14} />
+                                </button>
+                                <a
+                                    href={fileUrl}
+                                    download={att.fileName}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`p-1 rounded hover:bg-black/10 ${isOwn ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                                    title="Télécharger"
+                                >
+                                    <Download size={14} />
+                                </a>
+                            </div>
+                        );
+                    }
+
+                    const Icon = getFileIcon(att.fileType);
+                    return (
+                        <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg ${isOwn ? 'bg-white/10' : 'bg-gray-200/60'} max-w-[300px]`}>
+                            <Icon size={20} className="text-[#33cbcc] shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-medium truncate ${isOwn ? 'text-white' : 'text-gray-700'}`}>{att.fileName}</p>
+                                <p className={`text-[10px] ${isOwn ? 'text-white/50' : 'text-gray-400'}`}>{formatFileSize(att.size)}</p>
+                            </div>
+                            <a
+                                href={fileUrl}
+                                download={att.fileName}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`p-1 rounded hover:bg-black/10 ${isOwn ? 'text-white/70 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                                title="Télécharger"
+                            >
+                                <Download size={14} />
+                            </a>
+                        </div>
+                    );
+                })}
+            </div>
+
+            <AnimatePresence>
+                {lightboxSrc && (
+                    <ImageLightbox src={lightboxSrc.src} fileName={lightboxSrc.name} onClose={() => setLightboxSrc(null)} />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {pdfPreview && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setPdfPreview(null)}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="relative w-full max-w-4xl h-[85vh] bg-white rounded-xl overflow-hidden flex flex-col"
+                        >
+                            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 shrink-0">
+                                <span className="text-sm font-medium text-gray-700 truncate">{pdfPreview.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <a
+                                        href={pdfPreview.src}
+                                        download={pdfPreview.name}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+                                    >
+                                        <Download size={16} />
+                                    </a>
+                                    <button onClick={() => setPdfPreview(null)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            <iframe src={pdfPreview.src} className="flex-1 w-full" title={pdfPreview.name} />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
+    );
+};
+
 /* ─── Message Bubble ───────────────────────────────────── */
 
 const MessageBubble = ({
@@ -573,6 +807,9 @@ const MessageBubble = ({
         }
     }
 
+    const hasAttachments = message.attachments && message.attachments.length > 0;
+    const hasContent = message.content.trim().length > 0;
+
     if (isOwn) {
         return (
             <div className={`flex flex-col items-end px-5 py-0.5 group ${showAvatar ? 'mt-3' : ''}`}>
@@ -591,9 +828,14 @@ const MessageBubble = ({
                     </button>
                     {replyContext}
                     <div className="bg-[#283852] text-white px-4 py-2 rounded-2xl rounded-tr-sm">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                            {renderContent(message.content, true)}
-                        </p>
+                        {hasContent && (
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {renderContent(message.content, true)}
+                            </p>
+                        )}
+                        {hasAttachments && (
+                            <AttachmentRenderer attachments={message.attachments!} isOwn={true} />
+                        )}
                     </div>
                     {!showName && (
                         <span className="text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity block text-right mt-0.5">
@@ -632,9 +874,14 @@ const MessageBubble = ({
                 )}
                 {replyContext}
                 <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl rounded-tl-sm">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                        {renderContent(message.content)}
-                    </p>
+                    {hasContent && (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {renderContent(message.content)}
+                        </p>
+                    )}
+                    {hasAttachments && (
+                        <AttachmentRenderer attachments={message.attachments!} isOwn={false} />
+                    )}
                 </div>
                 {!showName && (
                     <span className="text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity block mt-0.5">
@@ -754,6 +1001,11 @@ const Messages = () => {
     const [selectedMentions, setSelectedMentions] = useState<string[]>([]);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+    // File attachment state
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const { data: messages, isLoading: messagesLoading } = useMessages(activeChannelId);
     const loadMore = useLoadMoreMessages(activeChannelId);
     const sendMessage = useSendMessage();
@@ -761,6 +1013,7 @@ const Messages = () => {
     const { startTyping, stopTyping } = useTyping(activeChannelId);
     const createDM = useCreateDM();
     const { data: members } = useMembers(activeChannelId);
+    const uploadFiles = useUploadFiles();
 
     const activeChannel = (channels || []).find(c => c.id === activeChannelId);
 
@@ -822,27 +1075,59 @@ const Messages = () => {
         };
     }, [socket, user?.userId]);
 
-    // Clear reply/mention state when switching channels
+    // Clear reply/mention/files state when switching channels
     useEffect(() => {
         setReplyingTo(null);
         setSelectedMentions([]);
         setMentionQuery(null);
+        setPendingFiles([]);
     }, [activeChannelId]);
 
-    const handleSend = () => {
-        if (!activeChannelId || !messageInput.trim()) return;
+    const handleSend = async () => {
+        if (!activeChannelId) return;
+        const hasText = messageInput.trim().length > 0;
+        const hasFiles = pendingFiles.length > 0;
+        if (!hasText && !hasFiles) return;
+
+        let attachments: ChatAttachment[] | undefined;
+
+        if (hasFiles) {
+            setIsUploading(true);
+            try {
+                attachments = await uploadFiles.mutateAsync(pendingFiles);
+            } catch {
+                setIsUploading(false);
+                return;
+            }
+            setIsUploading(false);
+        }
+
         sendMessage(
             activeChannelId,
             messageInput.trim(),
             replyingTo?.id,
             selectedMentions.length > 0 ? selectedMentions : undefined,
+            attachments,
         );
         setMessageInput('');
         setReplyingTo(null);
         setSelectedMentions([]);
         setMentionQuery(null);
+        setPendingFiles([]);
         stopTyping();
         setIsAtBottom(true);
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 0) {
+            setPendingFiles(prev => [...prev, ...files]);
+        }
+        e.target.value = '';
+    };
+
+    const removePendingFile = (index: number) => {
+        setPendingFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1076,6 +1361,38 @@ const Messages = () => {
                                     </div>
                                 )}
 
+                                {/* Pending files preview */}
+                                {pendingFiles.length > 0 && (
+                                    <div className="px-5 pt-2 shrink-0">
+                                        <div className="flex flex-wrap gap-2">
+                                            {pendingFiles.map((file, i) => {
+                                                const isImage = file.type.startsWith('image/');
+                                                const Icon = getFileIcon(file.type);
+                                                return (
+                                                    <div key={i} className="relative group/file">
+                                                        {isImage ? (
+                                                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                                                                <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 max-w-[180px]">
+                                                                <Icon size={16} className="text-[#33cbcc] shrink-0" />
+                                                                <span className="text-xs text-gray-600 truncate">{file.name}</span>
+                                                            </div>
+                                                        )}
+                                                        <button
+                                                            onClick={() => removePendingFile(i)}
+                                                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover/file:opacity-100 transition-opacity"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Message Input */}
                                 <div className="px-5 py-3 border-t border-gray-100 shrink-0 relative">
                                     {/* Mention dropdown */}
@@ -1086,7 +1403,21 @@ const Messages = () => {
                                             onSelect={handleMentionSelect}
                                         />
                                     )}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        className="hidden"
+                                        onChange={handleFileSelect}
+                                    />
                                     <div className="flex items-end gap-2 bg-gray-50 rounded-xl px-4 py-2 border border-gray-200 focus-within:border-[#33cbcc] focus-within:ring-2 focus-within:ring-[#33cbcc]/20 transition-all">
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="p-1.5 rounded-lg text-gray-400 hover:text-[#33cbcc] hover:bg-gray-100 transition-colors shrink-0"
+                                            title="Joindre un fichier"
+                                        >
+                                            <Paperclip size={18} />
+                                        </button>
                                         <textarea
                                             ref={textareaRef}
                                             value={messageInput}
@@ -1099,14 +1430,14 @@ const Messages = () => {
                                         />
                                         <button
                                             onClick={handleSend}
-                                            disabled={!messageInput.trim()}
+                                            disabled={(!messageInput.trim() && pendingFiles.length === 0) || isUploading}
                                             className={`p-2 rounded-lg transition-colors shrink-0 ${
-                                                messageInput.trim()
+                                                (messageInput.trim() || pendingFiles.length > 0) && !isUploading
                                                     ? 'bg-[#33cbcc] text-white hover:bg-[#2bb5b6] shadow-sm'
                                                     : 'text-gray-300'
                                             }`}
                                         >
-                                            <Send size={16} />
+                                            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                                         </button>
                                     </div>
                                 </div>

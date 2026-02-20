@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useRef } from 'react';
 import { useSocket } from '../../contexts/SocketContext';
 import { chatApi } from './api';
-import type { ChatMessage, Channel } from './types';
+import type { ChatMessage, ChatAttachment, Channel } from './types';
 
 export const useChannels = () => {
     const queryClient = useQueryClient();
@@ -56,8 +56,27 @@ export const useMessages = (channelId: string | null) => {
             );
         };
 
+        // Listen for message content updates (e.g. demand card status changes)
+        const handleMessageUpdated = (data: { messageId: string; channelId: string; content: string }) => {
+            if (data.channelId !== channelId) return;
+
+            queryClient.setQueryData(
+                ['chat', 'messages', channelId],
+                (old: ChatMessage[] | undefined) => {
+                    if (!old) return old;
+                    return old.map(m =>
+                        m.id === data.messageId ? { ...m, content: data.content } : m,
+                    );
+                },
+            );
+        };
+
         socket.on('message:new', handleNewMessage);
-        return () => { socket.off('message:new', handleNewMessage); };
+        socket.on('message:updated', handleMessageUpdated);
+        return () => {
+            socket.off('message:new', handleNewMessage);
+            socket.off('message:updated', handleMessageUpdated);
+        };
     }, [socket, channelId, queryClient]);
 
     return query;
@@ -86,15 +105,22 @@ export const useLoadMoreMessages = (channelId: string | null) => {
 export const useSendMessage = () => {
     const { socket } = useSocket();
 
-    return useCallback((channelId: string, content: string, replyToId?: string, mentions?: string[]) => {
+    return useCallback((channelId: string, content: string, replyToId?: string, mentions?: string[], attachments?: ChatAttachment[]) => {
         if (!socket) return;
         socket.emit('message:send', {
             channelId,
             content,
             ...(replyToId && { replyToId }),
             ...(mentions && mentions.length > 0 && { mentions }),
+            ...(attachments && attachments.length > 0 && { attachments }),
         });
     }, [socket]);
+};
+
+export const useUploadFiles = () => {
+    return useMutation({
+        mutationFn: (files: File[]) => chatApi.uploadFiles(files),
+    });
 };
 
 export const useMarkAsRead = () => {

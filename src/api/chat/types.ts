@@ -18,6 +18,13 @@ export interface Channel {
     };
 }
 
+export interface ChatAttachment {
+    fileName: string;
+    filePath: string;
+    fileType: string;
+    size: number;
+}
+
 export interface ChatMessage {
     id: string;
     channelId: string;
@@ -35,6 +42,7 @@ export interface ChatMessage {
         sender: { id: string; firstName: string; lastName: string };
     } | null;
     mentions?: string[] | null;
+    attachments?: ChatAttachment[] | null;
 }
 
 export interface ChannelMember {

@@ -21,6 +21,8 @@
             "progress": "En cours"
         },
         "productivity": "Productivité",
+        "bestEmployee": "Employé du mois",
+        "leaderboard": "Meilleurs Employés",
         "addEmployee": "Ajouter un employé",
         "addManager": "Ajouter un manager",
         "createManager": {

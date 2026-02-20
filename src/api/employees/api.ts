@@ -1,9 +1,12 @@
 import api from '../config';
-import type { Employee, CreateEmployeeDto, UpdateEmployeeDto } from './types';
+import type { Employee, CreateEmployeeDto, UpdateEmployeeDto, LeaderboardEmployee } from './types';
 
 export const employeesApi = {
     getAll: (departmentId?: string) =>
         api.get<Employee[]>('/employees', { params: departmentId ? { departmentId } : {} }).then(r => r.data),
+
+    getLeaderboard: (limit?: number) =>
+        api.get<LeaderboardEmployee[]>('/employees/leaderboard', { params: limit ? { limit } : {} }).then(r => r.data),
 
     getById: (id: string) =>
         api.get<Employee>(`/employees/${id}`).then(r => r.data),
@@ -28,4 +31,7 @@ export const employeesApi = {
 
     reinstate: (id: string) =>
         api.patch<Employee>(`/employees/${id}/reinstate`).then(r => r.data),
+
+    getTodayBirthdays: () =>
+        api.get<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; departmentName: string }[]>('/employees/birthdays/today').then(r => r.data),
 };

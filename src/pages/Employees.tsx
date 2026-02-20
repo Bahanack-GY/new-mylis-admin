@@ -28,7 +28,7 @@ import {
     Camera,
     Shield,
 } from 'lucide-react';
-import { useEmployees, useCreateEmployee } from '../api/employees/hooks';
+import { useEmployees, useCreateEmployee, useLeaderboard } from '../api/employees/hooks';
 import { useDepartmentScope, useAuth } from '../contexts/AuthContext';
 import { useDepartments } from '../api/departments/hooks';
 import { usePositions } from '../api/positions/hooks';
@@ -757,6 +757,7 @@ const Employees = () => {
     const isManager = role === 'MANAGER';
     const { data: apiEmployees, isLoading } = useEmployees(deptScope);
     const { data: apiDepartments } = useDepartments();
+    const { data: leaderboard } = useLeaderboard();
 
     const allEmployees = (apiEmployees || []).map((emp, i) => ({
         id: emp.id,
@@ -853,6 +854,69 @@ const Employees = () => {
                      )}
                  </div>
             </div>
+
+            {/* Top Employees Section */}
+            {leaderboard && leaderboard.length > 0 && !searchQuery && !selectedDepartment && (
+                <div className="bg-linear-to-r from-[#283852] to-[#1e2a3d] rounded-3xl p-6 lg:p-8 text-white shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#33cbcc]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    
+                    <div className="flex flex-col lg:flex-row gap-8 relative z-10">
+                        {/* Best Employee */}
+                        <div className="flex-1 max-w-sm flex flex-col items-center justify-center text-center p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                            
+                            <h2 className="text-sm font-semibold uppercase tracking-widest text-[#33cbcc] mb-3">{t('employees.bestEmployee', 'Employee of the Month')}</h2>
+                            <div className="relative mb-4">
+                                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#33cbcc] shadow-lg shadow-[#33cbcc]/30">
+                                    <img 
+                                        src={leaderboard[0].avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(leaderboard[0].firstName + '+' + leaderboard[0].lastName)}&background=33cbcc&color=fff`} 
+                                        alt={`${leaderboard[0].firstName} ${leaderboard[0].lastName}`} 
+                                        className="w-full h-full object-cover" 
+                                    />
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-yellow-900 border-2 border-[#283852] font-bold shadow-sm">
+                                    #1
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-bold">{leaderboard[0].firstName} {leaderboard[0].lastName}</h3>
+                            <p className="text-white/60 text-sm mb-3">{leaderboard[0].positionTitle} • {leaderboard[0].department}</p>
+                            <div className="px-4 py-1.5 bg-[#33cbcc]/20 text-[#33cbcc] font-bold rounded-full text-sm">
+                                {leaderboard[0].points} pts
+                            </div>
+                        </div>
+
+                        {/* Top 5 List */}
+                        <div className="flex-1 flex flex-col">
+                            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                                <Target size={20} className="text-[#33cbcc]" />
+                                {t('employees.leaderboard', 'Top Employees')}
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {leaderboard.slice(1, 5).map((emp) => (
+                                    <div key={emp.id} className="flex items-center gap-4 bg-white/5 rounded-xl p-3 border border-white/5 hover:bg-white/10 transition-colors">
+                                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-sm shrink-0">
+                                            #{emp.rank}
+                                        </div>
+                                        <div className="w-10 h-10 rounded-full overflow-hidden border border-white/20 shrink-0">
+                                            <img 
+                                                src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.firstName + '+' + emp.lastName)}&background=33cbcc&color=fff`} 
+                                                alt={`${emp.firstName} ${emp.lastName}`} 
+                                                className="w-full h-full object-cover" 
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-semibold text-sm truncate">{emp.firstName} {emp.lastName}</h4>
+                                            <p className="text-[10px] text-white/50 truncate">{emp.positionTitle}</p>
+                                        </div>
+                                        <div className="text-[#33cbcc] font-bold text-sm shrink-0">
+                                            {emp.points} pts
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Employee Grid */}
             {isLoading && (

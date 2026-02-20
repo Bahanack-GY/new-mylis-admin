@@ -1,11 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeesApi } from './api';
-import type { CreateEmployeeDto, UpdateEmployeeDto } from './types';
+import type { CreateEmployeeDto, UpdateEmployeeDto, LeaderboardEmployee } from './types';
 
 export const employeeKeys = {
     all: ['employees'] as const,
     detail: (id: string) => ['employees', id] as const,
 };
+
+export const useLeaderboard = (limit?: number) =>
+    useQuery({
+        queryKey: ['leaderboard', limit],
+        queryFn: () => employeesApi.getLeaderboard(limit),
+    });
 
 export const useEmployees = (departmentId?: string) =>
     useQuery({

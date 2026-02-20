@@ -1,5 +1,5 @@
 import api from '../config';
-import type { Channel, ChatMessage, ChannelMember, ChatUser } from './types';
+import type { Channel, ChatMessage, ChatAttachment, ChannelMember, ChatUser } from './types';
 
 export const chatApi = {
     getChannels: () =>
@@ -21,4 +21,12 @@ export const chatApi = {
 
     getUsers: () =>
         api.get<ChatUser[]>('/chat/users').then(r => r.data),
+
+    uploadFiles: (files: File[]) => {
+        const formData = new FormData();
+        files.forEach(f => formData.append('files', f));
+        return api.post<ChatAttachment[]>('/chat/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }).then(r => r.data);
+    },
 };
