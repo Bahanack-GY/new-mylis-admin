@@ -35,6 +35,7 @@ import { useProjects } from '../api/projects/hooks';
 import { useTasks } from '../api/tasks/hooks';
 import { useDepartments } from '../api/departments/hooks';
 import { useLogs } from '../api/logs/hooks';
+import type { Log } from '../api/logs/types';
 import { useInvoiceStats } from '../api/invoices/hooks';
 import { useExpenseStats } from '../api/expenses/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
@@ -410,7 +411,7 @@ const Dashboard = () => {
                             {t('dashboard.recentActivities.noData', 'No recent activities')}
                          </td>
                       </tr>
-                   ) : (apiLogs || []).slice(0, 10).map((log) => {
+                   ) : (apiLogs || []).slice(0, 10).map((log: Log) => {
                       const userName = log.user?.employee
                          ? `${log.user.employee.firstName} ${log.user.employee.lastName}`
                          : log.user?.email || log.userId;

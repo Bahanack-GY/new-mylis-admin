@@ -18,6 +18,7 @@ import {
     Loader2,
 } from 'lucide-react';
 import { useLogs } from '../api/logs/hooks';
+import type { Log } from '../api/logs/types';
 import {
     AreaChart,
     Area,
@@ -107,7 +108,7 @@ const ActivityPage = () => {
     const { data: apiLogs, isLoading } = useLogs();
 
     // Map API logs to display shape
-    const activities: ActivityItem[] = (apiLogs || []).map((log, i) => {
+    const activities: ActivityItem[] = (apiLogs || []).map((log: Log, i: number) => {
         const d = (log.details || {}) as Record<string, string>;
         return {
         id: i + 1,
