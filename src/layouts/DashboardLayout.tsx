@@ -6,6 +6,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
 import { employeesApi } from '../api/employees/api';
+import { useBrowserNotifications } from '../hooks/useBrowserNotifications';
 
 /* ─── Birthday Modal ──────────────────────────────────── */
 
@@ -103,6 +104,9 @@ const DashboardLayout = () => {
     const { user } = useAuth();
     const [birthdayPeople, setBirthdayPeople] = useState<BirthdayPerson[]>([]);
     const [showBirthday, setShowBirthday] = useState(false);
+
+    // Browser notifications
+    useBrowserNotifications();
 
     // Birthday modal: check once per day
     useEffect(() => {

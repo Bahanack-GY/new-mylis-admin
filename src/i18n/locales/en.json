@@ -1327,6 +1327,20 @@
       "save": "Save Changes"
     }
   },
+  "browserNotifications": {
+    "task": "New Task",
+    "project": "New Project",
+    "system": "System Notification",
+    "document": "New Document",
+    "sanction": "New Sanction",
+    "demand": "New Demand",
+    "message": "New Message",
+    "ticket": "Ticket Update",
+    "meeting": "New Meeting",
+    "chat": "New Message",
+    "permissionTitle": "Enable Notifications",
+    "permissionBody": "Get real-time alerts for demands, tasks and messages"
+  },
   "demands": {
     "title": "Demands",
     "subtitle": "Manage and track employee resource requests",

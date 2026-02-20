@@ -1327,6 +1327,20 @@
             "save": "Enregistrer les modifications"
         }
     },
+    "browserNotifications": {
+        "task": "Nouvelle tache",
+        "project": "Nouveau projet",
+        "system": "Notification systeme",
+        "document": "Nouveau document",
+        "sanction": "Nouvelle sanction",
+        "demand": "Nouvelle demande",
+        "message": "Nouveau message",
+        "ticket": "Mise a jour de ticket",
+        "meeting": "Nouvelle reunion",
+        "chat": "Nouveau message",
+        "permissionTitle": "Activer les notifications",
+        "permissionBody": "Recevez des alertes en temps reel pour les demandes, taches et messages"
+    },
     "demands": {
         "title": "Demandes",
         "subtitle": "Gérez et suivez les demandes de ressources des employés",
