@@ -15,7 +15,8 @@ import {
   UserCircle,
   Activity,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  HandCoins
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -45,6 +46,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
     { icon: FileText, label: 'documents', path: '/documents' },
     { icon: Ticket, label: 'tickets', path: '/tickets' },
     { icon: Receipt, label: 'invoices', path: '/invoices' },
+    { icon: HandCoins, label: 'demands', path: '/demands' },
     { icon: UserCircle, label: 'clients', path: '/clients' },
     { icon: Activity, label: 'activity', path: '/activity', managerOnly: true },
     { icon: Calendar, label: 'meetings', path: '/meetings' },

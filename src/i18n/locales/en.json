@@ -394,6 +394,7 @@
     "clients": "Clients",
     "settings": "Settings",
     "messages": "Messages",
+    "demands": "Demands",
     "logout": "Logout"
   },
   "header": {
@@ -1321,6 +1322,58 @@
     "settings": {
       "title": "Client Settings",
       "save": "Save Changes"
+    }
+  },
+  "demands": {
+    "title": "Demands",
+    "subtitle": "Manage and track employee resource requests",
+    "searchPlaceholder": "Search demands...",
+    "filterAll": "All",
+    "noResults": "No demands found",
+    "totalPrice": "Total Amount",
+    "items": "items",
+    "itemsList": "Items",
+    "itemName": "Item",
+    "quantity": "Qty",
+    "unitPrice": "Unit Price",
+    "subtotal": "Subtotal",
+    "proforma": "Proforma",
+    "viewProforma": "View proforma",
+    "image": "Image",
+    "importance": {
+      "barely": "Low priority",
+      "important": "Important",
+      "very_important": "Very important",
+      "urgent": "Urgent"
+    },
+    "requestedBy": "Requested by",
+    "rejectionReason": "Rejection reason",
+    "rejectionReasonPlaceholder": "Enter the rejection reason...",
+    "validatedOn": "Validated on",
+    "validate": "Validate",
+    "reject": "Reject",
+    "confirmReject": "Confirm Reject",
+    "cancel": "Cancel",
+    "close": "Close",
+    "status": {
+      "pending": "Pending",
+      "validated": "Validated",
+      "rejected": "Rejected"
+    },
+    "stats": {
+      "total": "Total Demands",
+      "pending": "Pending",
+      "validated": "Validated",
+      "rejected": "Rejected",
+      "totalExpense": "Total Expense"
+    },
+    "table": {
+      "items": "Items",
+      "employee": "Employee",
+      "department": "Department",
+      "totalPrice": "Total",
+      "status": "Status",
+      "date": "Date"
     }
   }
 }

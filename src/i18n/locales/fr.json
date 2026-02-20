@@ -394,6 +394,7 @@
         "clients": "Clients",
         "settings": "Paramètres",
         "messages": "Messages",
+        "demands": "Demandes",
         "logout": "Déconnexion"
     },
     "header": {
@@ -1321,6 +1322,58 @@
         "settings": {
             "title": "Paramètres du client",
             "save": "Enregistrer les modifications"
+        }
+    },
+    "demands": {
+        "title": "Demandes",
+        "subtitle": "Gérez et suivez les demandes de ressources des employés",
+        "searchPlaceholder": "Rechercher des demandes...",
+        "filterAll": "Toutes",
+        "noResults": "Aucune demande trouvée",
+        "totalPrice": "Montant total",
+        "items": "articles",
+        "itemsList": "Articles",
+        "itemName": "Article",
+        "quantity": "Qté",
+        "unitPrice": "Prix unitaire",
+        "subtotal": "Sous-total",
+        "proforma": "Proforma",
+        "viewProforma": "Voir le proforma",
+        "image": "Image",
+        "importance": {
+            "barely": "Peu important",
+            "important": "Important",
+            "very_important": "Très important",
+            "urgent": "Urgent"
+        },
+        "requestedBy": "Demandé par",
+        "rejectionReason": "Motif de rejet",
+        "rejectionReasonPlaceholder": "Saisissez le motif de rejet...",
+        "validatedOn": "Validé le",
+        "validate": "Valider",
+        "reject": "Rejeter",
+        "confirmReject": "Confirmer le rejet",
+        "cancel": "Annuler",
+        "close": "Fermer",
+        "status": {
+            "pending": "En attente",
+            "validated": "Validée",
+            "rejected": "Rejetée"
+        },
+        "stats": {
+            "total": "Total Demandes",
+            "pending": "En attente",
+            "validated": "Validées",
+            "rejected": "Rejetées",
+            "totalExpense": "Dépenses Totales"
+        },
+        "table": {
+            "items": "Articles",
+            "employee": "Employé",
+            "department": "Département",
+            "totalPrice": "Total",
+            "status": "Statut",
+            "date": "Date"
         }
     }
 }
