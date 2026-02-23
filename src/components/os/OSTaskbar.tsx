@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 import { Monitor, Minimize2, Maximize2, X } from 'lucide-react';
+import { appRegistry } from './osAppRegistry';
+import OSMacIcon from './OSMacIcon';
 import OSSystemTray from './OSSystemTray';
 import type { WindowState, ContextMenuEntry } from './types';
 
@@ -79,7 +81,8 @@ export default function OSTaskbar({
       {/* Running apps */}
       <div className="flex-1 flex items-center gap-1 overflow-x-auto">
         {windows.map(w => {
-          const Icon = w.icon;
+          const app = appRegistry.find(a => a.id === w.appId);
+          if (!app) return null;
           return (
             <button
               key={w.id}
@@ -91,7 +94,7 @@ export default function OSTaskbar({
                   : 'text-gray-200 bg-white/10 hover:bg-white/15'
               }`}
             >
-              <Icon size={14} className="shrink-0" />
+              <OSMacIcon icon={app.icon} gradient={app.gradient} size={24} />
               <span className="truncate">{w.title}</span>
             </button>
           );

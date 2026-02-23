@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Check } from 'lucide-react';
 import type { ContextMenuState } from './types';
 
 interface OSContextMenuProps {
@@ -57,6 +58,13 @@ export default function OSContextMenu({ menu, onClose }: OSContextMenuProps) {
             if (entry.type === 'divider') {
               return <div key={i} className="my-1 border-t border-white/10" />;
             }
+            if (entry.type === 'label') {
+              return (
+                <div key={i} className="px-3 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  {entry.text}
+                </div>
+              );
+            }
             const Icon = entry.icon;
             return (
               <button
@@ -71,7 +79,13 @@ export default function OSContextMenu({ menu, onClose }: OSContextMenuProps) {
                       : 'text-gray-300 hover:bg-white/10'
                   }`}
               >
-                {Icon && <Icon size={14} className="shrink-0 opacity-70" />}
+                {entry.checked !== undefined ? (
+                  <span className="w-3.5 shrink-0 flex items-center justify-center">
+                    {entry.checked && <Check size={12} className="text-[#33cbcc]" />}
+                  </span>
+                ) : (
+                  Icon && <Icon size={14} className="shrink-0 opacity-70" />
+                )}
                 {entry.label}
               </button>
             );

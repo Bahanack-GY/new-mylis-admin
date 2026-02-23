@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import OSMacIcon from './OSMacIcon';
 import type { AppDefinition } from './types';
 
 interface OSDesktopIconProps {
@@ -65,9 +66,7 @@ export default function OSDesktopIcon({ app, x, y, onOpen, onMove, onContextMenu
                  hover:bg-white/10 transition-colors select-none cursor-default
                  focus:outline-none focus:bg-white/15"
     >
-      <div className="w-12 h-12 rounded-xl bg-[#33cbcc]/20 flex items-center justify-center">
-        <Icon size={24} className="text-[#33cbcc]" />
-      </div>
+      <OSMacIcon icon={Icon} gradient={app.gradient} size={56} />
       <span className="text-[11px] text-white leading-tight text-center drop-shadow-md">
         {app.label}
       </span>

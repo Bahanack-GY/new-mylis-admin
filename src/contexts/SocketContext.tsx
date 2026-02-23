@@ -36,7 +36,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         const token = localStorage.getItem('access_token');
         if (!token) return;
 
-        const apiUrl = 'https://api.mylisapp.online';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
         const socket = io(apiUrl, {
             auth: { token },

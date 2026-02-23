@@ -1,7 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 
 export type ContextMenuEntry =
-  | { type: 'item'; label: string; icon?: LucideIcon; onClick: () => void; danger?: boolean; disabled?: boolean }
+  | { type: 'item'; label: string; icon?: LucideIcon; onClick: () => void; danger?: boolean; disabled?: boolean; checked?: boolean }
+  | { type: 'label'; text: string }
   | { type: 'divider' };
 
 export interface ContextMenuState {
@@ -29,6 +30,7 @@ export interface AppDefinition {
   id: string;
   label: string;
   icon: LucideIcon;
+  gradient: string;
   route: string;
   defaultWidth?: number;
   defaultHeight?: number;

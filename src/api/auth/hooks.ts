@@ -29,7 +29,7 @@ export const useLogin = () => {
             }
             setToken(data.access_token);
             qc.invalidateQueries({ queryKey: authKeys.profile });
-            navigate('/dashboard');
+            navigate(window.innerWidth < 768 ? '/dashboard' : '/os');
         },
     });
 };

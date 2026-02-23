@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Minimize2, Maximize2, X } from 'lucide-react';
 import OSTitleBar from './OSTitleBar';
 import type { WindowState, AppDefinition, ContextMenuEntry } from './types';
@@ -19,6 +19,7 @@ interface OSWindowProps {
 type ResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const EDGE_SIZE = 6;
+const TASKBAR_HEIGHT = 56;
 
 const edgeStyles: Record<ResizeEdge, React.CSSProperties> = {
   n:  { top: -EDGE_SIZE, left: EDGE_SIZE, right: EDGE_SIZE, height: EDGE_SIZE * 2, cursor: 'ns-resize' },
@@ -53,6 +54,13 @@ export default function OSWindow({
     origH: number;
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  // --- Close with animation ---
+  const handleClose = useCallback(() => {
+    setIsClosing(true);
+    setTimeout(onClose, 300);
+  }, [onClose]);
 
   // --- Drag ---
   const handleDragStart = useCallback(
@@ -148,70 +156,82 @@ export default function OSWindow({
           label: 'Close',
           icon: X,
           danger: true,
-          onClick: onClose,
+          onClick: handleClose,
         },
       ]);
     },
-    [win.isMaximized, onContextMenu, onMinimize, onMaximize, onClose]
+    [win.isMaximized, onContextMenu, onMinimize, onMaximize, handleClose]
   );
 
+  // --- Animation state ---
+  const minimizeY = window.innerHeight - TASKBAR_HEIGHT - win.y - win.height / 2;
+  const isHidden = win.isMinimized || isClosing;
+
+  const animate = isClosing
+    ? { opacity: 0, scale: 0.6, y: 30 }
+    : win.isMinimized
+      ? { opacity: 0, scale: 0.25, y: minimizeY }
+      : { opacity: 1, scale: 1, y: 0 };
+
+  const transition = isClosing
+    ? { duration: 0.25, ease: [0.4, 0, 1, 1] }
+    : win.isMinimized
+      ? { type: 'spring' as const, stiffness: 500, damping: 40 }
+      : { type: 'spring' as const, stiffness: 400, damping: 28 };
+
   return (
-    <AnimatePresence>
-      {!win.isMinimized && (
-        <motion.div
-          key={win.id}
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.92 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          style={{
-            position: 'absolute',
-            left: win.x,
-            top: win.y,
-            width: win.width,
-            height: win.height,
-            zIndex: win.zIndex,
-          }}
-          className="flex flex-col rounded-xl overflow-hidden shadow-2xl border border-white/10"
-          onPointerDown={onFocus}
-        >
-          <OSTitleBar
-            title={win.title}
-            icon={win.icon}
-            isMaximized={win.isMaximized}
-            onClose={onClose}
-            onMinimize={onMinimize}
-            onMaximize={onMaximize}
-            onPointerDown={handleDragStart}
-            onContextMenu={handleTitleBarContextMenu}
-          />
+    <motion.div
+      initial={{ opacity: 0, scale: 0.5, y: 60 }}
+      animate={animate}
+      transition={transition}
+      style={{
+        position: 'absolute',
+        left: win.x,
+        top: win.y,
+        width: win.width,
+        height: win.height,
+        zIndex: win.zIndex,
+        pointerEvents: isHidden ? 'none' : 'auto',
+        transformOrigin: 'bottom center',
+      }}
+      className="flex flex-col rounded-xl overflow-hidden shadow-2xl border border-white/10"
+      onPointerDown={isHidden ? undefined : onFocus}
+    >
+      <OSTitleBar
+        title={win.title}
+        icon={win.icon}
+        isMaximized={win.isMaximized}
+        onClose={handleClose}
+        onMinimize={onMinimize}
+        onMaximize={onMaximize}
+        onPointerDown={handleDragStart}
+        onContextMenu={handleTitleBarContextMenu}
+      />
 
-          {/* App content — iframe */}
-          <div className="flex-1 relative bg-gray-50">
-            <iframe
-              src={app.route}
-              className="absolute inset-0 w-full h-full border-0"
-              title={app.label}
+      {/* App content — iframe */}
+      <div className="flex-1 relative bg-gray-50">
+        <iframe
+          src={app.route}
+          className="absolute inset-0 w-full h-full border-0"
+          title={app.label}
+        />
+        {/* Overlay blocks iframe pointer events during drag/resize */}
+        {isDragging && (
+          <div className="absolute inset-0" />
+        )}
+      </div>
+
+      {/* Resize handles */}
+      {!win.isMaximized &&
+        (Object.entries(edgeStyles) as [ResizeEdge, React.CSSProperties][]).map(
+          ([edge, style]) => (
+            <div
+              key={edge}
+              style={{ ...style, position: 'absolute' }}
+              onPointerDown={handleResizeStart(edge)}
             />
-            {/* Overlay blocks iframe pointer events during drag/resize */}
-            {isDragging && (
-              <div className="absolute inset-0" />
-            )}
-          </div>
-
-          {/* Resize handles */}
-          {!win.isMaximized &&
-            (Object.entries(edgeStyles) as [ResizeEdge, React.CSSProperties][]).map(
-              ([edge, style]) => (
-                <div
-                  key={edge}
-                  style={{ ...style, position: 'absolute' }}
-                  onPointerDown={handleResizeStart(edge)}
-                />
-              )
-            )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+          )
+        )}
+    </motion.div>
   );
 }

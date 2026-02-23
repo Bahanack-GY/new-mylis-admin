@@ -515,13 +515,6 @@ const Tickets = () => {
         return dept?.employees || [];
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
-    }
 
     /* Filtered tickets */
     const filteredTickets = tickets.filter(ticket => {
@@ -582,6 +575,15 @@ const Tickets = () => {
         { key: 'all', label: t('tickets.filterAll') },
         ...STATUSES.map(s => ({ key: s as TicketStatus, label: t(`tickets.status.${s}`) })),
     ];
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
+            </div>
+        );
+    }
+
 
     return (
         <div className="space-y-8">

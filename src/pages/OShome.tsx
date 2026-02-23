@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { Navigate } from 'react-router-dom';
+import OSBootScreen from '../components/os/OSBootScreen';
 import OSDesktop from '../components/os/OSDesktop';
 import OSWindow from '../components/os/OSWindow';
 import OSTaskbar from '../components/os/OSTaskbar';
@@ -9,6 +11,10 @@ import { appRegistry } from '../components/os/osAppRegistry';
 import type { AppDefinition, ContextMenuState, ContextMenuEntry } from '../components/os/types';
 
 export default function OShome() {
+  // Redirect to dashboard on mobile — OS desktop requires a large screen
+  if (window.innerWidth < 768) {
+    return <Navigate to="/dashboard" replace />;
+  }
   const {
     windows,
     openWindow,
@@ -20,6 +26,7 @@ export default function OShome() {
     resizeWindow,
   } = useWindowManager();
 
+  const [booting, setBooting] = useState(true);
   const [startOpen, setStartOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -60,6 +67,9 @@ export default function OShome() {
       style={{ fontFamily: 'system-ui, sans-serif' }}
       onContextMenu={e => e.preventDefault()}
     >
+      {/* Boot screen */}
+      {booting && <OSBootScreen onDone={() => setBooting(false)} />}
+
       {/* Desktop with icons */}
       <OSDesktop onOpenApp={handleOpenApp} onContextMenu={showContextMenu} />
 

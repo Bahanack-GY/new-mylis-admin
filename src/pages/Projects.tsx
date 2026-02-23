@@ -718,13 +718,6 @@ const Projects = () => {
       };
   });
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-      </div>
-    );
-  }
 
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
@@ -767,6 +760,14 @@ const Projects = () => {
     { key: 'on_hold',   label: t('projects.statusOnHold') },
     { key: 'overdue',   label: t('projects.statusOverdue') },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

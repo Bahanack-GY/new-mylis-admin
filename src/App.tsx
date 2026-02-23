@@ -16,7 +16,9 @@ import Meetings from "./pages/Meetings"
 import Notifications from "./pages/Notifications"
 import Messages from "./pages/Messages"
 import Profile from "./pages/Profile"
+import OShome from "./pages/OShome"
 import DashboardLayout from "./layouts/DashboardLayout"
+import EmbedLayout from "./layouts/EmbedLayout"
 import EmployeeDetailLayout from "./layouts/EmployeeDetailLayout"
 import ProjectDetailLayout from "./layouts/ProjectDetailLayout"
 import DepartmentDetailLayout from "./layouts/DepartmentDetailLayout"
@@ -24,10 +26,13 @@ import ClientDetailLayout from "./layouts/ClientDetailLayout"
 import ProtectedRoute from "./components/ProtectedRoute"
 import PublicRoute from "./components/PublicRoute"
 
+const isMobile = () => window.innerWidth < 768;
+console.log(isMobile());
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to={isMobile() ? '/dashboard' : '/os'} replace />} />
 
       <Route path="/login" element={
         <PublicRoute>
@@ -37,6 +42,7 @@ function App() {
 
       {/* Admin routes for MANAGER and HEAD_OF_DEPARTMENT */}
       <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'HEAD_OF_DEPARTMENT']} />}>
+        <Route path="/os" element={<OShome />} />
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/employees" element={<Employees />} />
@@ -60,6 +66,29 @@ function App() {
         <Route path="/projects/:id" element={<ProjectDetailLayout />} />
         <Route path="/departments/:id" element={<DepartmentDetailLayout />} />
         <Route path="/clients/:id" element={<ClientDetailLayout />} />
+      </Route>
+
+      {/* Embed routes for OS desktop iframes */}
+      <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'HEAD_OF_DEPARTMENT']} />}>
+        <Route element={<EmbedLayout />}>
+          <Route path="/embed/dashboard" element={<Dashboard />} />
+          <Route path="/embed/employees" element={<Employees />} />
+          <Route path="/embed/tasks" element={<Tasks />} />
+          <Route path="/embed/projects" element={<Projects />} />
+          <Route path="/embed/departments" element={<Departments />} />
+          <Route path="/embed/documents" element={<Documents />} />
+          <Route path="/embed/tickets" element={<Tickets />} />
+          <Route path="/embed/invoices" element={<Invoices />} />
+          <Route path="/embed/demands" element={<Demands />} />
+          <Route path="/embed/expenses" element={<Expenses />} />
+          <Route path="/embed/clients" element={<Clients />} />
+          <Route path="/embed/activity" element={<ActivityPage />} />
+          <Route path="/embed/meetings" element={<Meetings />} />
+          <Route path="/embed/notifications" element={<Notifications />} />
+          <Route path="/embed/profile" element={<Profile />} />
+        </Route>
+        {/* Messages has its own full-screen layout — no EmbedLayout wrapper */}
+        <Route path="/embed/messages" element={<Messages />} />
       </Route>
     </Routes>
   )

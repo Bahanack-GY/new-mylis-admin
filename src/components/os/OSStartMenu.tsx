@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, LogOut } from 'lucide-react';
 import { appRegistry } from './osAppRegistry';
+import OSMacIcon from './OSMacIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import type { AppDefinition } from './types';
 
@@ -78,9 +79,7 @@ export default function OSStartMenu({ isOpen, onClose, onOpenApp }: OSStartMenuP
                     onClick={() => handleOpen(app)}
                     className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-white/10 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-[#33cbcc]/15 flex items-center justify-center">
-                      <Icon size={20} className="text-[#33cbcc]" />
-                    </div>
+                    <OSMacIcon icon={Icon} gradient={app.gradient} size={44} />
                     <span className="text-[11px] text-gray-300 text-center leading-tight">
                       {app.label}
                     </span>
