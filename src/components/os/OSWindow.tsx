@@ -174,7 +174,7 @@ export default function OSWindow({
       : { opacity: 1, scale: 1, y: 0 };
 
   const transition = isClosing
-    ? { duration: 0.25, ease: [0.4, 0, 1, 1] }
+    ? { duration: 0.25, ease: [0.4, 0, 1, 1] as [number, number, number, number] }
     : win.isMinimized
       ? { type: 'spring' as const, stiffness: 500, damping: 40 }
       : { type: 'spring' as const, stiffness: 400, damping: 28 };
