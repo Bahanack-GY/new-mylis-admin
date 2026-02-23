@@ -52,7 +52,7 @@ const IMPORTANCE_COLORS: Record<DemandImportance, string> = {
 const formatFCFA = (amount: number) =>
     new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.mylisapp.online';
 
 const resolveFileUrl = (path: string | null | undefined): string | null => {
     if (!path) return null;
