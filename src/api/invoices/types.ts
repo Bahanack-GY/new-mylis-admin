@@ -1,5 +1,10 @@
 export type InvoiceStatus = 'CREATED' | 'SENT' | 'PAID' | 'REJECTED';
 
+export interface CustomColumn {
+    id: string;
+    label: string;
+}
+
 export interface InvoiceItem {
     id?: string;
     invoiceId?: string;
@@ -7,6 +12,7 @@ export interface InvoiceItem {
     quantity: number;
     unitPrice: number;
     amount: number;
+    metadata?: Record<string, string> | null;
 }
 
 export interface Invoice {
@@ -28,6 +34,7 @@ export interface Invoice {
     sentAt?: string;
     createdAt: string;
     updatedAt: string;
+    customColumns?: CustomColumn[] | null;
     project?: { id: string; name: string; budget?: number };
     department?: { id: string; name: string };
     client?: { id: string; name: string };
@@ -43,7 +50,8 @@ export interface CreateInvoiceDto {
     dueDate: string;
     taxRate?: number;
     notes?: string;
-    items: { description: string; quantity: number; unitPrice: number }[];
+    customColumns?: CustomColumn[];
+    items: { description: string; quantity: number; unitPrice: number; metadata?: Record<string, string> }[];
 }
 
 export type UpdateInvoiceDto = Partial<CreateInvoiceDto>;

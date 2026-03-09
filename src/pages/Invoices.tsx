@@ -91,13 +91,14 @@ const CreateInvoiceModal = ({ onClose }: { onClose: () => void }) => {
     const deptScope = useDepartmentScope();
     const { data: projects } = useProjects(deptScope);
 
+    const [customColumns, setCustomColumns] = useState<{ id: string; label: string }[]>([]);
     const [form, setForm] = useState({
         projectId: '',
         issueDate: new Date().toISOString().split('T')[0],
         dueDate: '',
         taxRate: '19.25',
         notes: '',
-        items: [{ description: '', quantity: '1', unitPrice: '' }],
+        items: [{ description: '', quantity: '1', unitPrice: '', customFields: {} as Record<string, string> }],
     });
 
     const selectedProject = (projects || []).find(p => p.id === form.projectId);
@@ -109,10 +110,34 @@ const CreateInvoiceModal = ({ onClose }: { onClose: () => void }) => {
         return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
     }, [onClose]);
 
-    const addItem = () => setForm(prev => ({ ...prev, items: [...prev.items, { description: '', quantity: '1', unitPrice: '' }] }));
+    const addItem = () => setForm(prev => ({ ...prev, items: [...prev.items, { description: '', quantity: '1', unitPrice: '', customFields: {} as Record<string, string> }] }));
     const removeItem = (idx: number) => setForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== idx) }));
     const updateItem = (idx: number, field: string, value: string) => {
         setForm(prev => ({ ...prev, items: prev.items.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
+    };
+    const updateCustomField = (itemIdx: number, colId: string, value: string) => {
+        setForm(prev => ({
+            ...prev,
+            items: prev.items.map((item, i) => i === itemIdx ? { ...item, customFields: { ...item.customFields, [colId]: value } } : item),
+        }));
+    };
+
+    const addCustomColumn = () => {
+        const id = `col_${Date.now()}`;
+        setCustomColumns(prev => [...prev, { id, label: 'Column' }]);
+    };
+    const updateColumnLabel = (id: string, label: string) => {
+        setCustomColumns(prev => prev.map(c => c.id === id ? { ...c, label } : c));
+    };
+    const removeCustomColumn = (id: string) => {
+        setCustomColumns(prev => prev.filter(c => c.id !== id));
+        setForm(prev => ({
+            ...prev,
+            items: prev.items.map(item => {
+                const { [id]: _removed, ...rest } = item.customFields;
+                return { ...item, customFields: rest };
+            }),
+        }));
     };
 
     const subtotal = form.items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
@@ -226,75 +251,117 @@ const CreateInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                                 <FileText size={12} />
                                 {t('invoices.create.items')}
                             </label>
-                            <button
-                                type="button"
-                                onClick={addItem}
-                                className="flex items-center gap-1 text-xs font-semibold text-[#33cbcc] hover:text-[#2bb5b6] transition-colors"
-                            >
-                                <Plus size={14} />
-                                {t('invoices.create.addItem')}
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={addCustomColumn}
+                                    className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors border border-dashed border-gray-300 hover:border-gray-400 rounded-lg px-2.5 py-1"
+                                >
+                                    <Plus size={12} />
+                                    {t('invoices.create.addColumn', 'Add column')}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={addItem}
+                                    className="flex items-center gap-1 text-xs font-semibold text-[#33cbcc] hover:text-[#2bb5b6] transition-colors"
+                                >
+                                    <Plus size={14} />
+                                    {t('invoices.create.addItem')}
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Items header */}
-                        <div className="grid grid-cols-12 gap-2 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1">
-                            <div className="col-span-5">{t('invoices.create.description')}</div>
-                            <div className="col-span-2">{t('invoices.create.quantity')}</div>
-                            <div className="col-span-2">{t('invoices.create.unitPrice')}</div>
-                            <div className="col-span-2">{t('invoices.create.amount')}</div>
-                            <div className="col-span-1"></div>
-                        </div>
-
-                        <div className="space-y-2">
-                            {form.items.map((item, idx) => {
-                                const lineAmount = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
-                                return (
-                                    <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                                        <div className="col-span-5">
-                                            <input
-                                                type="text"
-                                                value={item.description}
-                                                onChange={e => updateItem(idx, 'description', e.target.value)}
-                                                placeholder={t('invoices.create.descriptionPlaceholder')}
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all"
-                                            />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={item.quantity}
-                                                onChange={e => updateItem(idx, 'quantity', e.target.value)}
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all"
-                                            />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                value={item.unitPrice}
-                                                onChange={e => updateItem(idx, 'unitPrice', e.target.value)}
-                                                placeholder="0"
-                                                className="w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all"
-                                            />
-                                        </div>
-                                        <div className="col-span-2 text-xs font-medium text-gray-700 px-1">
-                                            {formatCurrency(lineAmount)}
-                                        </div>
-                                        <div className="col-span-1 flex justify-end">
-                                            {form.items.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeItem(idx)}
-                                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            )}
-                                        </div>
+                        {/* Scrollable table */}
+                        <div className="overflow-x-auto">
+                            {/* Items header */}
+                            <div className="flex gap-2 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1 min-w-max">
+                                <div className="w-48 shrink-0">{t('invoices.create.description')}</div>
+                                <div className="w-16 shrink-0">{t('invoices.create.quantity')}</div>
+                                <div className="w-24 shrink-0">{t('invoices.create.unitPrice')}</div>
+                                {customColumns.map(col => (
+                                    <div key={col.id} className="w-32 shrink-0 flex items-center gap-1 group">
+                                        <input
+                                            type="text"
+                                            value={col.label}
+                                            onChange={e => updateColumnLabel(col.id, e.target.value)}
+                                            className="w-full bg-transparent border-b border-dashed border-gray-300 focus:border-[#33cbcc] focus:outline-none text-[10px] font-semibold text-gray-400 uppercase tracking-wider py-0.5 transition-colors"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeCustomColumn(col.id)}
+                                            className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all shrink-0"
+                                        >
+                                            <X size={10} />
+                                        </button>
                                     </div>
-                                );
-                            })}
+                                ))}
+                                <div className="w-24 shrink-0">{t('invoices.create.amount')}</div>
+                                <div className="w-8 shrink-0"></div>
+                            </div>
+
+                            <div className="space-y-2">
+                                {form.items.map((item, idx) => {
+                                    const lineAmount = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+                                    const cellCls = "w-full bg-white rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all";
+                                    return (
+                                        <div key={idx} className="flex gap-2 items-center min-w-max">
+                                            <div className="w-48 shrink-0">
+                                                <input
+                                                    type="text"
+                                                    value={item.description}
+                                                    onChange={e => updateItem(idx, 'description', e.target.value)}
+                                                    placeholder={t('invoices.create.descriptionPlaceholder')}
+                                                    className={cellCls}
+                                                />
+                                            </div>
+                                            <div className="w-16 shrink-0">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={item.quantity}
+                                                    onChange={e => updateItem(idx, 'quantity', e.target.value)}
+                                                    className={cellCls}
+                                                />
+                                            </div>
+                                            <div className="w-24 shrink-0">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    value={item.unitPrice}
+                                                    onChange={e => updateItem(idx, 'unitPrice', e.target.value)}
+                                                    placeholder="0"
+                                                    className={cellCls}
+                                                />
+                                            </div>
+                                            {customColumns.map(col => (
+                                                <div key={col.id} className="w-32 shrink-0">
+                                                    <input
+                                                        type="text"
+                                                        value={item.customFields[col.id] || ''}
+                                                        onChange={e => updateCustomField(idx, col.id, e.target.value)}
+                                                        placeholder="—"
+                                                        className={cellCls}
+                                                    />
+                                                </div>
+                                            ))}
+                                            <div className="w-24 shrink-0 text-xs font-medium text-gray-700 px-1">
+                                                {formatCurrency(lineAmount)}
+                                            </div>
+                                            <div className="w-8 shrink-0 flex justify-end">
+                                                {form.items.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeItem(idx)}
+                                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
@@ -361,12 +428,14 @@ const CreateInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                                 dueDate: form.dueDate,
                                 taxRate: Number(form.taxRate) || 0,
                                 notes: form.notes || undefined,
+                                customColumns: customColumns.length > 0 ? customColumns : undefined,
                                 items: form.items
                                     .filter(item => item.description.trim() && Number(item.unitPrice) > 0)
                                     .map(item => ({
                                         description: item.description,
                                         quantity: Number(item.quantity) || 1,
                                         unitPrice: Number(item.unitPrice),
+                                        metadata: Object.keys(item.customFields).length > 0 ? item.customFields : undefined,
                                     })),
                             }, { onSuccess: () => onClose() });
                         }}
