@@ -17,7 +17,13 @@ import {
     Plus,
     X,
     Search,
-    Check
+    Calendar,
+    DollarSign,
+    Upload,
+    FileText,
+    Trash2,
+    Loader2,
+    AlignLeft,
 } from 'lucide-react';
 import {
     AreaChart,
@@ -36,9 +42,10 @@ import {
 import type { DepartmentTab } from '../components/DepartmentDetailSidebar';
 import type { Department, DeptEmployee } from '../layouts/DepartmentDetailLayout';
 import { useEmployees } from '../api/employees/hooks';
-import { useProjects } from '../api/projects/hooks';
+import { useProjects, useCreateProject } from '../api/projects/hooks';
 import { useTasks } from '../api/tasks/hooks';
 import { useInvoices, useInvoiceStats } from '../api/invoices/hooks';
+import { useClients, useCreateClient } from '../api/clients/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 
 /* ─── Status helpers ────────────────────────────────────── */
@@ -176,26 +183,136 @@ const AddMemberModal = ({
     );
 };
 
+/* ─── Helpers (project modal) ───────────────────────────── */
+
+interface DocFile {
+    name: string;
+    size: string;
+}
+
+interface ProjectForm {
+    name: string;
+    description: string;
+    client: string;
+    cost: string;
+    revenue: string;
+    startDate: string;
+    dueDate: string;
+    contract: DocFile | null;
+    srs: DocFile | null;
+    otherDocs: DocFile[];
+}
+
+const fmtToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/* ─── Create Client sub-modal ───────────────────────────── */
+
+const CreateClientModal = ({ onClose, onCreated }: { onClose: () => void; onCreated: (name: string) => void }) => {
+    const { t } = useTranslation();
+    const createClient = useCreateClient();
+    const [form, setForm] = useState({ name: '', type: 'one_time' as 'one_time' | 'subscription' });
+
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handleKey);
+        return () => document.removeEventListener('keydown', handleKey);
+    }, [onClose]);
+
+    const isValid = form.name.trim().length > 0;
+    const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
+    const selectCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all appearance-none cursor-pointer';
+    const labelCls = 'flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-60 flex items-center justify-center p-4"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-[#33cbcc]/10 flex items-center justify-center">
+                            <Users size={18} className="text-[#33cbcc]" />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">{t('clients.createTitle')}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                    <div>
+                        <label className={labelCls}><Users size={12} />{t('clients.name')}</label>
+                        <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder={t('clients.namePlaceholder')} className={inputCls} autoFocus />
+                    </div>
+                    <div>
+                        <label className={labelCls}>{t('clients.type')}</label>
+                        <select value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as 'one_time' | 'subscription' }))} className={selectCls}>
+                            <option value="one_time">{t('clients.typeOneTime')}</option>
+                            <option value="subscription">{t('clients.typeSubscription')}</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">{t('clients.cancel')}</button>
+                    <button
+                        disabled={!isValid || createClient.isPending}
+                        onClick={() => {
+                            if (!isValid) return;
+                            createClient.mutate({ name: form.name, type: form.type }, {
+                                onSuccess: () => { onCreated(form.name); onClose(); },
+                            });
+                        }}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors shadow-lg shadow-[#33cbcc]/20 ${isValid && !createClient.isPending ? 'bg-[#33cbcc] hover:bg-[#2bb5b6]' : 'bg-gray-300 cursor-not-allowed shadow-none'}`}
+                    >
+                        {createClient.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                        {t('clients.create')}
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
 /* ─── Add Project Modal ────────────────────────────────── */
 
-const STATUS_OPTIONS = [
-    { value: 'active', labelKey: 'statusActive', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-    { value: 'on_hold', labelKey: 'statusOnHold', bg: 'bg-amber-50', text: 'text-amber-600' },
-    { value: 'overdue', labelKey: 'statusOverdue', bg: 'bg-rose-50', text: 'text-rose-600' },
-];
-
 const AddProjectModal = ({
-    department: _department,
+    department,
     onClose,
-    onAdd,
 }: {
     department: Department;
     onClose: () => void;
-    onAdd: (project: { name: string; status: string }) => void;
 }) => {
     const { t } = useTranslation();
-    const [name, setName] = useState('');
-    const [status, setStatus] = useState('active');
+    const createProject = useCreateProject();
+    const { data: allClients } = useClients();
+    const [showCreateClient, setShowCreateClient] = useState(false);
+
+    const [form, setForm] = useState<ProjectForm>({
+        name: '',
+        description: '',
+        client: '',
+        cost: '',
+        revenue: '',
+        startDate: fmtToday(),
+        dueDate: '',
+        contract: null,
+        srs: null,
+        otherDocs: [],
+    });
 
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -204,9 +321,31 @@ const AddProjectModal = ({
         return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
     }, [onClose]);
 
-    const isValid = name.trim().length > 0;
+    const update = <K extends keyof ProjectForm>(key: K, value: ProjectForm[K]) => {
+        setForm(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleFileSelect = (key: 'contract' | 'srs', e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        update(key, { name: file.name, size: `${(file.size / 1024).toFixed(0)} KB` });
+    };
+
+    const handleOtherDocs = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        const newDocs: DocFile[] = Array.from(files).map(f => ({ name: f.name, size: `${(f.size / 1024).toFixed(0)} KB` }));
+        setForm(prev => ({ ...prev, otherDocs: [...prev.otherDocs, ...newDocs] }));
+    };
+
+    const removeOtherDoc = (idx: number) => {
+        setForm(prev => ({ ...prev, otherDocs: prev.otherDocs.filter((_, i) => i !== idx) }));
+    };
+
+    const isValid = form.name.trim().length > 0 && form.dueDate.length > 0;
 
     const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
+    const selectCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all appearance-none cursor-pointer';
     const labelCls = 'flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
 
     return (
@@ -223,78 +362,188 @@ const AddProjectModal = ({
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 onClick={e => e.stopPropagation()}
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
             >
                 {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-lg font-bold text-gray-800">{t('departmentDetail.projects.addProjectTitle')}</h2>
-                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-[#33cbcc]/10 flex items-center justify-center shrink-0">
+                            <Plus size={18} className="text-[#33cbcc]" />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">{t('projects.createTitle')}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
                         <X size={18} />
                     </button>
                 </div>
 
-                {/* Form */}
-                <div className="p-6 space-y-5">
-                    {/* Project Name */}
+                {/* Scrollable content */}
+                <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+                    {/* Department (read-only, pre-filled) */}
                     <div>
-                        <label className={labelCls}>
-                            <Briefcase size={12} />
-                            {t('departmentDetail.projects.projectName')}
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder={t('departmentDetail.projects.projectNamePlaceholder')}
-                            className={inputCls}
-                            autoFocus
-                        />
+                        <label className={labelCls}><Building size={12} />{t('projects.formDepartment')}</label>
+                        <div
+                            className="flex items-center gap-3 w-full bg-gray-50 rounded-xl border border-gray-200 px-4 py-2.5"
+                        >
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: department.color }} />
+                            <span className="text-sm font-medium text-gray-700">{department.name}</span>
+                        </div>
                     </div>
 
-                    {/* Status */}
+                    {/* Project name */}
                     <div>
-                        <label className={labelCls}>
-                            <FolderKanban size={12} />
-                            {t('departmentDetail.projects.status')}
-                        </label>
+                        <label className={labelCls}><Briefcase size={12} />{t('projects.formName')}</label>
+                        <input type="text" value={form.name} onChange={e => update('name', e.target.value)} placeholder={t('projects.formNamePlaceholder')} className={inputCls} autoFocus />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <label className={labelCls}><AlignLeft size={12} />{t('projects.description')}</label>
+                        <textarea value={form.description} onChange={e => update('description', e.target.value)} placeholder={t('projects.formDescriptionPlaceholder')} rows={3} className={`${inputCls} resize-none`} />
+                    </div>
+
+                    {/* Client */}
+                    <div>
+                        <label className={labelCls}><Users size={12} />{t('projects.formClient')}</label>
                         <div className="flex gap-2">
-                            {STATUS_OPTIONS.map(opt => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setStatus(opt.value)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border-2 ${
-                                        status === opt.value
-                                            ? `${opt.bg} ${opt.text} border-current`
-                                            : 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100'
-                                    }`}
-                                >
-                                    {status === opt.value && <Check size={12} />}
-                                    {t(`projects.${opt.labelKey}`)}
-                                </button>
-                            ))}
+                            <select value={form.client} onChange={e => update('client', e.target.value)} className={selectCls}>
+                                <option value="">{t('projects.formClientPlaceholder')}</option>
+                                {(allClients || []).map(c => (
+                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                ))}
+                            </select>
+                            <button type="button" onClick={() => setShowCreateClient(true)} className="shrink-0 w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center text-[#33cbcc] hover:bg-[#33cbcc]/5 hover:border-[#33cbcc]/30 transition-colors" title={t('clients.createTitle')}>
+                                <Plus size={16} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <AnimatePresence>
+                        {showCreateClient && (
+                            <CreateClientModal
+                                onClose={() => setShowCreateClient(false)}
+                                onCreated={(name) => update('client', name)}
+                            />
+                        )}
+                    </AnimatePresence>
+
+                    {/* Cost + Revenue */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}><DollarSign size={12} />{t('projects.formCost')}</label>
+                            <input type="text" value={form.cost} onChange={e => update('cost', e.target.value)} placeholder="0 FCFA" className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}><TrendingUp size={12} />{t('projects.formRevenue')}</label>
+                            <input type="text" value={form.revenue} onChange={e => update('revenue', e.target.value)} placeholder="0 FCFA" className={inputCls} />
+                        </div>
+                    </div>
+
+                    {/* Start + Due dates */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className={labelCls}><Calendar size={12} />{t('projects.startDate')}</label>
+                            <input type="date" value={form.startDate} onChange={e => update('startDate', e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}><Calendar size={12} />{t('projects.formDueDate')}</label>
+                            <input type="date" value={form.dueDate} onChange={e => update('dueDate', e.target.value)} className={inputCls} />
+                        </div>
+                    </div>
+
+                    {/* Documents */}
+                    <div className="space-y-4">
+                        <p className={`${labelCls} mb-0`}><FileText size={12} />{t('projects.formDocuments')}</p>
+
+                        {/* Contract */}
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 mb-1.5">{t('projects.formContract')}</p>
+                            {form.contract ? (
+                                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <FileText size={14} className="text-[#33cbcc]" />
+                                        <span className="font-medium text-gray-700">{form.contract.name}</span>
+                                        <span className="text-gray-400">{form.contract.size}</span>
+                                    </div>
+                                    <button onClick={() => update('contract', null)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                </div>
+                            ) : (
+                                <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-4 py-4 cursor-pointer hover:border-[#33cbcc]/40 hover:bg-[#33cbcc]/5 transition-all text-sm text-gray-400">
+                                    <Upload size={16} />{t('projects.formUpload')}
+                                    <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileSelect('contract', e)} />
+                                </label>
+                            )}
+                        </div>
+
+                        {/* SRS */}
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 mb-1.5">{t('projects.formSRS')}</p>
+                            {form.srs ? (
+                                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <FileText size={14} className="text-[#33cbcc]" />
+                                        <span className="font-medium text-gray-700">{form.srs.name}</span>
+                                        <span className="text-gray-400">{form.srs.size}</span>
+                                    </div>
+                                    <button onClick={() => update('srs', null)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                </div>
+                            ) : (
+                                <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-4 py-4 cursor-pointer hover:border-[#33cbcc]/40 hover:bg-[#33cbcc]/5 transition-all text-sm text-gray-400">
+                                    <Upload size={16} />{t('projects.formUpload')}
+                                    <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={e => handleFileSelect('srs', e)} />
+                                </label>
+                            )}
+                        </div>
+
+                        {/* Other docs */}
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 mb-1.5">{t('projects.formOtherDocs')}</p>
+                            {form.otherDocs.length > 0 && (
+                                <div className="space-y-2 mb-3">
+                                    {form.otherDocs.map((doc, i) => (
+                                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                                            <div className="flex items-center gap-2 text-sm">
+                                                <FileText size={14} className="text-[#33cbcc]" />
+                                                <span className="font-medium text-gray-700">{doc.name}</span>
+                                                <span className="text-gray-400">{doc.size}</span>
+                                            </div>
+                                            <button onClick={() => removeOtherDoc(i)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <label className="flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-4 py-4 cursor-pointer hover:border-[#33cbcc]/40 hover:bg-[#33cbcc]/5 transition-all text-sm text-gray-400">
+                                <Upload size={16} />{t('projects.formUpload')}
+                                <input type="file" className="hidden" multiple onChange={handleOtherDocs} />
+                            </label>
                         </div>
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-                    >
-                        {t('departmentDetail.projects.cancel')}
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                    <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                        {t('projects.formCancel')}
                     </button>
                     <button
-                        onClick={() => { if (isValid) { onAdd({ name: name.trim(), status }); onClose(); } }}
-                        disabled={!isValid}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${
-                            isValid
-                                ? 'bg-[#33cbcc] hover:bg-[#2bb5b6] shadow-lg shadow-[#33cbcc]/20'
-                                : 'bg-gray-300 cursor-not-allowed shadow-none'
-                        }`}
+                        onClick={() => {
+                            if (!isValid) return;
+                            const selectedClient = allClients?.find(c => c.name === form.client);
+                            createProject.mutate({
+                                name: form.name,
+                                description: form.description || undefined,
+                                departmentId: String(department.id),
+                                clientId: selectedClient?.id,
+                                budget: form.cost ? parseFloat(form.cost) : undefined,
+                                startDate: form.startDate || undefined,
+                                endDate: form.dueDate || undefined,
+                            }, { onSuccess: () => onClose() });
+                        }}
+                        disabled={!isValid || createProject.isPending}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors shadow-lg shadow-[#33cbcc]/20 ${isValid && !createProject.isPending ? 'bg-[#33cbcc] hover:bg-[#2bb5b6]' : 'bg-gray-300 cursor-not-allowed shadow-none'}`}
                     >
-                        <Plus size={14} />
-                        {t('departmentDetail.projects.create')}
+                        {createProject.isPending ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                        {t('projects.formCreate')}
                     </button>
                 </div>
             </motion.div>
@@ -649,10 +898,6 @@ const ProjectsView = ({ department }: { department: Department }) => {
         { label: t('departmentDetail.projects.avgProgress'), value: `${avgProgress}%` },
     ];
 
-    const handleAddProject = (_project: { name: string; status: string }) => {
-        // Projects are created via the API — refetch handles updates
-    };
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -734,7 +979,6 @@ const ProjectsView = ({ department }: { department: Department }) => {
                     <AddProjectModal
                         department={department}
                         onClose={() => setShowAddModal(false)}
-                        onAdd={handleAddProject}
                     />
                 )}
             </AnimatePresence>
