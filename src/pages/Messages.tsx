@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -990,6 +991,7 @@ const Messages = () => {
     const location = useLocation();
     const isEmbed = location.pathname.startsWith('/embed/');
     const { onlineUsers, socket } = useSocket();
+    const queryClient = useQueryClient();
     const { data: channels, isLoading: channelsLoading } = useChannels();
     const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
     const [showNewDM, setShowNewDM] = useState(false);
@@ -1108,6 +1110,7 @@ const Messages = () => {
             setIsUploading(false);
         }
 
+        const channelIdSnapshot = activeChannelId;
         sendMessage(
             activeChannelId,
             messageInput.trim(),
@@ -1122,6 +1125,12 @@ const Messages = () => {
         setPendingFiles([]);
         stopTyping();
         setIsAtBottom(true);
+        // Invalidate messages after a short delay to ensure the server has saved the message,
+        // covering cases where the socket event or ACK is not received by the sender.
+        setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['chat', 'messages', channelIdSnapshot] });
+            queryClient.invalidateQueries({ queryKey: ['chat', 'channels'] });
+        }, 500);
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

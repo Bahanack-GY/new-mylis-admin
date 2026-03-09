@@ -36,6 +36,8 @@ export const useMessages = (channelId: string | null) => {
         queryKey: ['chat', 'messages', channelId],
         queryFn: () => chatApi.getMessages(channelId!),
         enabled: !!channelId,
+        staleTime: 0,
+        refetchInterval: 10000,
     });
 
     // Listen for new messages in this channel
@@ -104,6 +106,7 @@ export const useLoadMoreMessages = (channelId: string | null) => {
 
 export const useSendMessage = () => {
     const { socket } = useSocket();
+    const queryClient = useQueryClient();
 
     return useCallback((channelId: string, content: string, replyToId?: string, mentions?: string[], attachments?: ChatAttachment[]) => {
         if (!socket) return;
@@ -113,8 +116,19 @@ export const useSendMessage = () => {
             ...(replyToId && { replyToId }),
             ...(mentions && mentions.length > 0 && { mentions }),
             ...(attachments && attachments.length > 0 && { attachments }),
+        }, (message: ChatMessage) => {
+            // ACK: server confirmed the message — add it to the cache immediately
+            if (!message) return;
+            queryClient.setQueryData(
+                ['chat', 'messages', channelId],
+                (old: ChatMessage[] | undefined) => {
+                    if (!old) return [message];
+                    if (old.some(m => m.id === message.id)) return old;
+                    return [...old, message];
+                },
+            );
         });
-    }, [socket]);
+    }, [socket, queryClient]);
 };
 
 export const useUploadFiles = () => {
