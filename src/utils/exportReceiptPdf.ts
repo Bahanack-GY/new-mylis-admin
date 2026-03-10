@@ -120,9 +120,9 @@ export function exportReceiptPdf(
     const rightEdge = pw - MARGIN;
 
     // Colors
-    const GREEN: [number, number, number] = [16, 185, 129];   // emerald-500
+    const GREEN: [number, number, number] = [51, 203, 204];   // brand teal
     const DARK: [number, number, number] = [40, 56, 82];
-    const GREEN_LIGHT: [number, number, number] = [236, 253, 245];
+    const GREEN_LIGHT: [number, number, number] = [240, 252, 252];
 
     // ── First page letterhead ──
     if (hasLH) drawLetterhead(doc, letterheadImg!);
@@ -265,7 +265,7 @@ export function exportReceiptPdf(
             cellPadding: 3.5,
         },
         alternateRowStyles: {
-            fillColor: [240, 253, 248],
+            fillColor: [245, 250, 250],
         },
         columnStyles: {
             0: { cellWidth: 'auto' },
@@ -297,7 +297,7 @@ export function exportReceiptPdf(
     const totalsBoxX = pw - MARGIN - 75;
     const totalsBoxW = 75;
 
-    doc.setFillColor(240, 253, 248);
+    doc.setFillColor(248, 250, 252);
     doc.roundedRect(totalsBoxX - 2, y - 3, totalsBoxW + 4, 32, 2, 2, 'F');
 
     doc.setFontSize(8.5);
@@ -336,7 +336,7 @@ export function exportReceiptPdf(
 
     y = ensureSpace(doc, y, boxH + 4, letterheadImg);
 
-    doc.setFillColor(240, 253, 248);
+    doc.setFillColor(245, 250, 252);
     doc.roundedRect(MARGIN, y - 3, pw - MARGIN * 2, boxH, 2, 2, 'F');
 
     doc.setFontSize(8);
