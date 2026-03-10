@@ -28,6 +28,8 @@ import lisappImg from '../assets/entete/lisapp.png';
 import liscreaImg from '../assets/entete/liscrea.png';
 import liscarwashImg from '../assets/entete/liscarwash.png';
 import rennovaImg from '../assets/entete/rennova.png';
+import signatureImgSrc from '../assets/invoice/Signature.png';
+import cachetImgSrc from '../assets/invoice/cachet.png';
 
 const LETTERHEADS: { key: string; label: string; src: string }[] = [
     { key: 'lisdev', label: 'LIS Dev', src: lisdevImg },
@@ -494,7 +496,11 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
                 const entry = LETTERHEADS.find(l => l.key === selectedLetterhead);
                 if (entry) letterheadBase64 = await imgToBase64(entry.src);
             }
-            exportInvoicePdf(invoice, template, letterheadBase64);
+            const [sigBase64, cachetBase64] = await Promise.all([
+                imgToBase64(signatureImgSrc),
+                imgToBase64(cachetImgSrc),
+            ]);
+            exportInvoicePdf(invoice, template, letterheadBase64, sigBase64, cachetBase64);
             if (invoice.status === 'CREATED') {
                 sendInvoice.mutate(invoice.id, { onSuccess: onClose });
             }
@@ -511,7 +517,11 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
                 const entry = LETTERHEADS.find(l => l.key === selectedLetterhead);
                 if (entry) letterheadBase64 = await imgToBase64(entry.src);
             }
-            exportReceiptPdf(invoice, template, letterheadBase64);
+            const [sigBase64, cachetBase64] = await Promise.all([
+                imgToBase64(signatureImgSrc),
+                imgToBase64(cachetImgSrc),
+            ]);
+            exportReceiptPdf(invoice, template, letterheadBase64, sigBase64, cachetBase64);
         } finally {
             setIsExportingReceipt(false);
         }

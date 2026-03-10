@@ -19,6 +19,58 @@ const formatDate = (dateStr: string | undefined) => {
     return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 };
 
+/* ── Number to French words ────────────────────────────── */
+
+function numberToWordsFr(n: number): string {
+    const ones = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+        'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize',
+        'dix-sept', 'dix-huit', 'dix-neuf'];
+    const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante', 'quatre-vingt', 'quatre-vingt'];
+
+    function below100(num: number): string {
+        if (num < 20) return ones[num];
+        const t = Math.floor(num / 10);
+        const o = num % 10;
+        if (t === 7) return 'soixante-' + ones[10 + o];
+        if (t === 9) return 'quatre-vingt-' + (o > 0 ? ones[o] : '');
+        if (t === 8) return 'quatre-vingt' + (o > 0 ? '-' + ones[o] : 's');
+        return tens[t] + (o === 1 ? '-et-un' : o > 0 ? '-' + ones[o] : '');
+    }
+
+    function below1000(num: number): string {
+        if (num < 100) return below100(num);
+        const h = Math.floor(num / 100);
+        const r = num % 100;
+        const hWord = (h > 1 ? ones[h] + ' ' : '') + 'cent';
+        if (r === 0) return hWord + (h > 1 ? 's' : '');
+        return hWord + ' ' + below100(r);
+    }
+
+    const integer = Math.round(n);
+    if (integer === 0) return 'zéro';
+
+    let result = '';
+    let remaining = integer;
+
+    if (remaining >= 1000000) {
+        const m = Math.floor(remaining / 1000000);
+        result += below1000(m) + (m > 1 ? ' millions ' : ' million ');
+        remaining = remaining % 1000000;
+    }
+
+    if (remaining >= 1000) {
+        const k = Math.floor(remaining / 1000);
+        result += (k === 1 ? 'mille' : below1000(k) + ' mille') + ' ';
+        remaining = remaining % 1000;
+    }
+
+    if (remaining > 0) {
+        result += below1000(remaining);
+    }
+
+    return result.trim();
+}
+
 /* ── Letterhead ────────────────────────────────────────── */
 
 function drawLetterhead(doc: jsPDF, img: string) {
@@ -42,12 +94,26 @@ function ensureSpace(doc: jsPDF, y: number, needed: number, lhImg?: string): num
     return y;
 }
 
+/* ── Bank info parser ──────────────────────────────────── */
+
+function parseBankInfo(bankInfo: string): { key: string; value: string }[] {
+    return bankInfo.split('\n')
+        .map(line => {
+            const idx = line.indexOf(':');
+            if (idx === -1) return null;
+            return { key: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() };
+        })
+        .filter(Boolean) as { key: string; value: string }[];
+}
+
 /* ── Main export ───────────────────────────────────────── */
 
 export function exportInvoicePdf(
     invoice: Invoice,
     template?: InvoiceTemplate | null,
     letterheadImg?: string,
+    signatureImg?: string,
+    cachetImg?: string,
 ) {
     const doc = new jsPDF();
     const pw = doc.internal.pageSize.getWidth();
@@ -232,6 +298,24 @@ export function exportInvoicePdf(
 
     y += 40;
 
+    // ── Amount in words ──
+    y = ensureSpace(doc, y, 14, letterheadImg);
+    const amountWords = numberToWordsFr(Number(invoice.total));
+    const amountWordsCapitalized = amountWords.charAt(0).toUpperCase() + amountWords.slice(1);
+
+    doc.setFillColor(245, 250, 252);
+    doc.roundedRect(MARGIN, y - 3, pw - MARGIN * 2, 12, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...DARK);
+    doc.text('Arrêter le montant de la présente facture à la somme de :', MARGIN + 3, y + 3);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(80, 80, 80);
+    const labelWidth = doc.getTextWidth('Arrêter le montant de la présente facture à la somme de : ');
+    doc.text(`${amountWordsCapitalized} francs CFA`, MARGIN + 3 + labelWidth, y + 3);
+
+    y += 16;
+
     // ── Notes ──
     if (invoice.notes) {
         y = ensureSpace(doc, y, 20, letterheadImg);
@@ -262,19 +346,69 @@ export function exportInvoicePdf(
         y += 8;
     }
 
-    // ── Bank Info ──
+    // ── Payment Info (structured table) ──
     if (template?.bankInfo) {
-        y = ensureSpace(doc, y, 15, letterheadImg);
-        doc.setFontSize(7);
+        y = ensureSpace(doc, y, 45, letterheadImg);
+
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...BRAND);
-        doc.text('INFORMATIONS BANCAIRES', MARGIN, y);
-        y += 4;
-        doc.setFontSize(8);
+        doc.setTextColor(...DARK);
+        doc.text('Informations de Paiement', MARGIN, y);
+        y += 3;
+
+        doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(80, 80, 80);
-        doc.text(template.bankInfo, MARGIN, y, { maxWidth: pw - MARGIN * 2 });
-        y += 8;
+        doc.text('Vous pouvez payer par chèque ou virement bancaire en utilisant les coordonnées suivantes :', MARGIN, y + 4, { maxWidth: pw - MARGIN * 2 });
+        y += 9;
+
+        const bankRows = parseBankInfo(template.bankInfo);
+        if (bankRows.length > 0) {
+            autoTable(doc, {
+                startY: y,
+                body: bankRows.map(r => [r.key, r.value]),
+                theme: 'grid',
+                styles: { fontSize: 8.5, cellPadding: 3 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', textColor: [40, 56, 82], cellWidth: 55 },
+                    1: { textColor: [50, 50, 50] },
+                },
+                margin: { left: MARGIN, right: MARGIN },
+            });
+            y = (doc as any).lastAutoTable.finalY + 8;
+        } else {
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(80, 80, 80);
+            doc.text(template.bankInfo, MARGIN, y, { maxWidth: pw - MARGIN * 2 });
+            y += 8;
+        }
+    }
+
+    // ── Signature & Cachet ──
+    if (signatureImg || cachetImg) {
+        y = ensureSpace(doc, y, 45, letterheadImg);
+        const sigW = 45;
+        const sigH = 22;
+        const cachetSize = 30;
+        const sigX = rightEdge - sigW;
+        const cachetX = sigX - cachetSize + 10; // slight overlap
+        const blockCenterX = (cachetX + rightEdge) / 2;
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...DARK);
+        doc.text('La direction', blockCenterX, y, { align: 'center' });
+        y += 5;
+
+        if (signatureImg) {
+            doc.addImage(signatureImg, 'PNG', sigX, y, sigW, sigH);
+        }
+        if (cachetImg) {
+            doc.addImage(cachetImg, 'PNG', cachetX, y - 2, cachetSize, cachetSize);
+        }
+
+        y += sigH + 8;
     }
 
     // ── Footer (only without letterhead) ──
