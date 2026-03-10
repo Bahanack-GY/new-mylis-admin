@@ -324,22 +324,31 @@ export function exportReceiptPdf(
     y += 40;
 
     // ── Amount in words ──
-    y = ensureSpace(doc, y, 14, letterheadImg);
     const amountWords = numberToWordsFr(Number(invoice.total));
     const amountWordsCapitalized = amountWords.charAt(0).toUpperCase() + amountWords.slice(1);
+    const amountWordsText = `${amountWordsCapitalized} francs CFA`;
+    const boxInnerW = pw - MARGIN * 2 - 6;
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    const wrappedLines = doc.splitTextToSize(amountWordsText, boxInnerW);
+    const boxH = 8 + wrappedLines.length * 4.5;
+
+    y = ensureSpace(doc, y, boxH + 4, letterheadImg);
 
     doc.setFillColor(240, 253, 248);
-    doc.roundedRect(MARGIN, y - 3, pw - MARGIN * 2, 12, 2, 2, 'F');
+    doc.roundedRect(MARGIN, y - 3, pw - MARGIN * 2, boxH, 2, 2, 'F');
+
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...DARK);
     doc.text('Arrêter le montant du présent reçu à la somme de :', MARGIN + 3, y + 3);
+
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(80, 80, 80);
-    const labelWidth = doc.getTextWidth('Arrêter le montant du présent reçu à la somme de : ');
-    doc.text(`${amountWordsCapitalized} francs CFA`, MARGIN + 3 + labelWidth, y + 3);
+    doc.text(wrappedLines, MARGIN + 3, y + 8, { maxWidth: boxInnerW });
 
-    y += 16;
+    y += boxH + 4;
 
     // ── PAID stamp ──
     y = ensureSpace(doc, y, 30, letterheadImg);
