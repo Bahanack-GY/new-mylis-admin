@@ -92,17 +92,6 @@ function ensureSpace(doc: jsPDF, y: number, needed: number, lhImg?: string): num
     return y;
 }
 
-/* ── Bank info parser ──────────────────────────────────── */
-
-function parseBankInfo(bankInfo: string): { key: string; value: string }[] {
-    return bankInfo.split('\n')
-        .map(line => {
-            const idx = line.indexOf(':');
-            if (idx === -1) return null;
-            return { key: line.slice(0, idx).trim(), value: line.slice(idx + 1).trim() };
-        })
-        .filter(Boolean) as { key: string; value: string }[];
-}
 
 /* ── Main export ───────────────────────────────────────── */
 
@@ -329,24 +318,25 @@ export function exportReceiptPdf(
     const amountWordsText = `${amountWordsCapitalized} francs CFA`;
     const boxInnerW = pw - MARGIN * 2 - 6;
 
-    doc.setFontSize(8);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'italic');
     const wrappedLines = doc.splitTextToSize(amountWordsText, boxInnerW);
-    const boxH = 8 + wrappedLines.length * 4.5;
+    const boxH = 10 + wrappedLines.length * 6.5;
 
     y = ensureSpace(doc, y, boxH + 4, letterheadImg);
 
     doc.setFillColor(245, 250, 252);
     doc.roundedRect(MARGIN, y - 3, pw - MARGIN * 2, boxH, 2, 2, 'F');
 
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...DARK);
-    doc.text('Arrêter le montant du présent reçu à la somme de :', MARGIN + 3, y + 3);
+    doc.text('Arrêter le montant du présent reçu à la somme de :', MARGIN + 3, y + 4);
 
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(80, 80, 80);
-    doc.text(wrappedLines, MARGIN + 3, y + 8, { maxWidth: boxInnerW });
+    doc.text(wrappedLines, MARGIN + 3, y + 11, { maxWidth: boxInnerW });
 
     y += boxH + 4;
 
@@ -388,69 +378,82 @@ export function exportReceiptPdf(
         y += 10;
     }
 
-    // ── Payment Info (structured table) ──
-    if (template?.bankInfo) {
-        y = ensureSpace(doc, y, 45, letterheadImg);
+    // ── Bottom section: Payment Info (left) + Signature & Cachet (right) ──
+    const sigW = 45;
+    const sigH = 22;
+    const cachetSize = 30;
+    const rightColW = cachetSize + sigW - 10 + 4;
+    const rightColX = rightEdge - rightColW;
+    const leftColW = rightColX - MARGIN - 6;
 
+    const BANK_ROWS = [
+        { key: 'Nom du Compte', value: 'LIFE S SIMPLE SARL' },
+        { key: 'Numero de compte', value: '40008172011' },
+        { key: 'Nom de la Banque', value: 'BGFI' },
+        { key: 'Code', value: 'BGFICMCX' },
+    ];
+    const hasSigOrCachet = !!(signatureImg || cachetImg);
+
+    {
+        const estimatedH = Math.max(12 + BANK_ROWS.length * 8 + 18, hasSigOrCachet ? 5 + sigH + 6 : 0);
+        y = ensureSpace(doc, y, estimatedH + 6, letterheadImg);
+
+        const blockStartY = y;
+
+        // ── Left: Payment Info ──
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...DARK);
         doc.text('Informations de Paiement', MARGIN, y);
-        y += 3;
+        y += 4;
 
-        doc.setFontSize(7.5);
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(80, 80, 80);
-        doc.text('Vous pouvez payer par chèque ou virement bancaire en utilisant les coordonnées suivantes :', MARGIN, y + 4, { maxWidth: pw - MARGIN * 2 });
-        y += 9;
+        doc.text(
+            'Vous pouvez payer par cheque ou virement bancaire en utilisant les coordonnees suivantes :',
+            MARGIN, y + 3,
+            { maxWidth: leftColW },
+        );
+        y += 8;
 
-        const bankRows = parseBankInfo(template.bankInfo);
-        if (bankRows.length > 0) {
-            autoTable(doc, {
-                startY: y,
-                body: bankRows.map(r => [r.key, r.value]),
-                theme: 'grid',
-                styles: { fontSize: 8.5, cellPadding: 3 },
-                columnStyles: {
-                    0: { fontStyle: 'bold', textColor: [40, 56, 82], cellWidth: 55 },
-                    1: { textColor: [50, 50, 50] },
-                },
-                margin: { left: MARGIN, right: MARGIN },
-            });
-            y = (doc as any).lastAutoTable.finalY + 8;
-        } else {
+        autoTable(doc, {
+            startY: y,
+            body: BANK_ROWS.map(r => [r.key, r.value]),
+            theme: 'grid',
+            styles: { fontSize: 8.5, cellPadding: 3 },
+            columnStyles: {
+                0: { fontStyle: 'bold', textColor: [40, 56, 82], cellWidth: 42 },
+                1: { textColor: [50, 50, 50] },
+            },
+            tableWidth: leftColW,
+            margin: { left: MARGIN, right: pw - MARGIN - leftColW },
+        });
+        y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+
+        // ── Right: La direction + Signature + Cachet ──
+        if (hasSigOrCachet) {
+            const sigX = rightEdge - sigW;
+            const cachetX = sigX - cachetSize + 10;
+            const blockCenterX = (cachetX + rightEdge) / 2;
+            const sigY = blockStartY + 5;
+
             doc.setFontSize(8);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(80, 80, 80);
-            doc.text(template.bankInfo, MARGIN, y, { maxWidth: pw - MARGIN * 2 });
-            y += 8;
-        }
-    }
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...DARK);
+            doc.text('La direction', blockCenterX, blockStartY, { align: 'center' });
 
-    // ── Signature & Cachet ──
-    if (signatureImg || cachetImg) {
-        y = ensureSpace(doc, y, 45, letterheadImg);
-        const sigW = 45;
-        const sigH = 22;
-        const cachetSize = 30;
-        const sigX = rightEdge - sigW;
-        const cachetX = sigX - cachetSize + 10; // slight overlap
-        const blockCenterX = (cachetX + rightEdge) / 2;
+            if (signatureImg) {
+                doc.addImage(signatureImg, 'PNG', sigX, sigY, sigW, sigH);
+            }
+            if (cachetImg) {
+                doc.addImage(cachetImg, 'PNG', cachetX, sigY - 2, cachetSize, cachetSize);
+            }
 
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...DARK);
-        doc.text('La direction', blockCenterX, y, { align: 'center' });
-        y += 5;
-
-        if (signatureImg) {
-            doc.addImage(signatureImg, 'PNG', sigX, y, sigW, sigH);
-        }
-        if (cachetImg) {
-            doc.addImage(cachetImg, 'PNG', cachetX, y - 2, cachetSize, cachetSize);
+            y = Math.max(y, sigY + sigH + 4);
         }
 
-        y += sigH + 8;
+        y += 6;
     }
 
     // ── Footer ──
