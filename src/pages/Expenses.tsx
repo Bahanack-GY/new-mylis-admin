@@ -4,7 +4,7 @@ import ExpenseModal from './ExpenseModal';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { Plus, Wallet, FileText, Search, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight, Repeat, LayoutGrid, Briefcase } from 'lucide-react';
+import { Plus, FileText, Search, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight, Briefcase, Users, Tag, TrendingUp } from 'lucide-react';
 import { useExpenses, useExpenseStats, useDeleteExpense } from '../api/expenses/hooks';
 import type { Expense } from '../api/expenses/types';
 
@@ -121,67 +121,86 @@ export default function Expenses() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Grand Total = direct expenses + annual salaries + project budgets */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-[#33cbcc]/5 rounded-bl-[100px] transition-transform group-hover:scale-110" />
                     <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Total Annuel</p>
-                            <h3 className="text-2xl font-bold text-gray-800">{formatFCFA(stats?.totalYear || 0)}</h3>
+                        <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Total des Charges</p>
+                            <h3 className="text-xl font-bold text-gray-800 truncate">
+                                {formatFCFA((stats?.totalYear || 0) + (stats?.totalSalaries || 0) * 12 + (stats?.totalProjects || 0))}
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-1">Dépenses + salaires + projets</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-[#33cbcc]/10 flex items-center justify-center text-[#33cbcc]">
-                            <Wallet size={20} />
+                        <div className="w-10 h-10 rounded-full bg-[#33cbcc]/10 flex items-center justify-center text-[#33cbcc] shrink-0">
+                            <TrendingUp size={20} />
                         </div>
                     </div>
                 </motion.div>
 
+                {/* Direct expenses only */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
+                    <div className="absolute right-0 top-0 w-24 h-24 bg-amber-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
                     <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Transactions</p>
-                            <h3 className="text-2xl font-bold text-gray-800">{stats?.totalCount || 0}</h3>
+                        <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Dépenses Directes</p>
+                            <h3 className="text-xl font-bold text-gray-800 truncate">{formatFCFA(stats?.totalYear || 0)}</h3>
+                            <p className="text-xs text-gray-400 mt-1">
+                                {stats?.totalCount || 0} transaction{(stats?.totalCount || 0) > 1 ? 's' : ''}
+                                {(stats?.recurrentCount || 0) > 0 && ` · ${stats?.recurrentCount} récurrente${(stats?.recurrentCount || 0) > 1 ? 's' : ''}`}
+                            </p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
                             <FileText size={20} />
                         </div>
                     </div>
                 </motion.div>
 
+                {/* Monthly payroll */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 w-24 h-24 bg-purple-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
+                    <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
                     <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Récurrentes</p>
-                            <h3 className="text-2xl font-bold text-gray-800">{stats?.recurrentCount || 0}</h3>
+                        <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Masse Salariale</p>
+                            <h3 className="text-xl font-bold text-gray-800 truncate">{formatFCFA(stats?.totalSalaries || 0)}</h3>
+                            <p className="text-xs text-gray-400 mt-1">Par mois · {formatFCFA((stats?.totalSalaries || 0) * 12)} / an</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
-                            <Repeat size={20} />
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                            <Users size={20} />
                         </div>
                     </div>
                 </motion.div>
 
+                {/* Project budgets */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 w-24 h-24 bg-amber-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Catégories</p>
-                            <h3 className="text-2xl font-bold text-gray-800">{stats?.byCategory?.length || 0}</h3>
-                        </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                            <LayoutGrid size={20} />
-                        </div>
-                    </div>
-                </motion.div>
-
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
                     <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Projets</p>
-                            <h3 className="text-2xl font-bold text-gray-800">{formatFCFA(stats?.totalProjects || 0)}</h3>
+                        <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Budget Projets</p>
+                            <h3 className="text-xl font-bold text-gray-800 truncate">{formatFCFA(stats?.totalProjects || 0)}</h3>
+                            <p className="text-xs text-gray-400 mt-1">Alloué sur {selectedYear}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                             <Briefcase size={20} />
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Top expense category */}
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 w-24 h-24 bg-purple-50 rounded-bl-[100px] transition-transform group-hover:scale-110" />
+                    <div className="flex justify-between items-start">
+                        <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-sm font-medium text-gray-500 mb-1">Top Catégorie</p>
+                            <h3 className="text-xl font-bold text-gray-800 truncate">
+                                {stats?.byCategory?.[0] ? formatFCFA(stats.byCategory[0].value) : '—'}
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-1 truncate">
+                                {stats?.byCategory?.[0]?.name || 'Aucune dépense'}
+                            </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                            <Tag size={20} />
                         </div>
                     </div>
                 </motion.div>

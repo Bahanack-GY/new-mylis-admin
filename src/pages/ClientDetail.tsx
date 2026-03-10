@@ -347,8 +347,15 @@ const ProjectsView = ({ client }: { client: ClientData }) => {
                                             <p className="text-xs text-gray-400 mt-1 line-clamp-2">{project.description}</p>
                                         )}
                                     </div>
-                                    {project.budget > 0 && (
-                                        <span className="text-xs font-medium text-gray-500">{fmtCurrency(project.budget)}</span>
+                                    {(project.budget > 0 || project.revenue > 0) && (
+                                        <div className="text-right">
+                                            {project.budget > 0 && (
+                                                <p className="text-xs text-gray-400">{fmtCurrency(project.budget)} coût</p>
+                                            )}
+                                            {project.revenue > 0 && (
+                                                <p className="text-xs font-semibold text-emerald-600">{fmtCurrency(project.revenue)} rev.</p>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
 

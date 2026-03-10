@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     Bell,
@@ -14,6 +15,7 @@ import {
     Circle,
     Clock,
     CalendarDays,
+    MessageSquare,
 } from 'lucide-react';
 
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '../api/notifications/hooks';
@@ -28,6 +30,8 @@ const TYPE_COLORS: Record<NotificationType, string> = {
     meeting: '#8b5cf6',
     document: '#33cbcc',
     ticket: '#ef4444',
+    message: '#10b981',
+    chat: '#10b981',
 };
 
 const TYPE_ICONS: Record<NotificationType, React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>> = {
@@ -37,9 +41,11 @@ const TYPE_ICONS: Record<NotificationType, React.ComponentType<{ size?: number; 
     meeting: Calendar,
     document: FileText,
     ticket: Ticket,
+    message: MessageSquare,
+    chat: MessageSquare,
 };
 
-const NOTIFICATION_TYPES: NotificationType[] = ['system', 'task', 'project', 'meeting', 'document', 'ticket'];
+const NOTIFICATION_TYPES: NotificationType[] = ['system', 'task', 'project', 'meeting', 'document', 'ticket', 'message', 'chat'];
 
 
 /* ─── Helper ────────────────────────────────────────────── */
@@ -61,6 +67,7 @@ function getRelativeTime(timestamp: string): string {
 
 const Notifications = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const { data: notifications = [] } = useNotifications();
     const markAsReadMut = useMarkAsRead();
     const markAllAsReadMut = useMarkAllAsRead();
@@ -213,7 +220,12 @@ const Notifications = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.03 }}
-                                onClick={() => !notif.read && markAsReadMut.mutate(notif.id)}
+                                onClick={() => {
+                                    if (!notif.read) markAsReadMut.mutate(notif.id);
+                                    if (notif.type === 'message' || notif.type === 'chat') {
+                                        navigate(notif.meta?.channelId ? `/messages?channel=${notif.meta.channelId}` : '/messages');
+                                    }
+                                }}
                                 className={`flex items-start gap-4 px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50/50 ${
                                     !notif.read ? 'bg-[#33cbcc]/5' : ''
                                 }`}

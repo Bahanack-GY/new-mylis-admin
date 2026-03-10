@@ -26,7 +26,7 @@ import {
     Image as ImageIcon,
     Eye,
 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import Header from '../components/Header';
@@ -989,6 +989,7 @@ const Messages = () => {
     const { t } = useTranslation();
     const { user } = useAuth();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
     const isEmbed = location.pathname.startsWith('/embed/');
     const { onlineUsers, socket } = useSocket();
     const queryClient = useQueryClient();
@@ -1025,12 +1026,16 @@ const Messages = () => {
 
     const activeChannel = (channels || []).find(c => c.id === activeChannelId);
 
-    // Auto-select first channel
+    // Auto-select channel from query param (?channel=id) or first channel
     useEffect(() => {
-        if (!activeChannelId && channels && channels.length > 0) {
+        if (!channels || channels.length === 0) return;
+        const channelFromParam = searchParams.get('channel');
+        if (channelFromParam && channels.find(c => c.id === channelFromParam)) {
+            setActiveChannelId(channelFromParam);
+        } else if (!activeChannelId) {
             setActiveChannelId(channels[0].id);
         }
-    }, [channels, activeChannelId]);
+    }, [channels, searchParams]);
 
     // Mark as read when opening a channel
     useEffect(() => {

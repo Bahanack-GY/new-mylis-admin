@@ -535,6 +535,7 @@ const AddProjectModal = ({
                                 departmentId: String(department.id),
                                 clientId: selectedClient?.id,
                                 budget: form.cost ? parseFloat(form.cost) : undefined,
+                                revenue: form.revenue ? parseFloat(form.revenue) : undefined,
                                 startDate: form.startDate || undefined,
                                 endDate: form.dueDate || undefined,
                             }, { onSuccess: () => onClose() });

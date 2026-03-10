@@ -141,7 +141,7 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
         }));
     };
 
-    const isValid = form.firstName.trim().length > 0 && form.lastName.trim().length > 0 && form.role !== '' && form.department !== '';
+    const isValid = form.firstName.trim().length > 0 && form.lastName.trim().length > 0 && (managerMode || (form.role !== '' && form.department !== ''));
 
     const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
     const labelCls = 'flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
@@ -378,41 +378,43 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
                         </div>
                     </div>
 
-                    {/* Role + Department */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className={labelCls}>
-                                <Briefcase size={12} />
-                                {t('employees.create.role')}
-                            </label>
-                            <select
-                                value={form.role}
-                                onChange={e => setForm(prev => ({ ...prev, role: e.target.value }))}
-                                className={inputCls}
-                            >
-                                <option value="">{t('employees.create.rolePlaceholder')}</option>
-                                {(apiPositions || []).map(p => (
-                                    <option key={p.id} value={p.title}>{p.title}</option>
-                                ))}
-                            </select>
+                    {/* Role + Department (not shown for managers) */}
+                    {!managerMode && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className={labelCls}>
+                                    <Briefcase size={12} />
+                                    {t('employees.create.role')}
+                                </label>
+                                <select
+                                    value={form.role}
+                                    onChange={e => setForm(prev => ({ ...prev, role: e.target.value }))}
+                                    className={inputCls}
+                                >
+                                    <option value="">{t('employees.create.rolePlaceholder')}</option>
+                                    {(apiPositions || []).map(p => (
+                                        <option key={p.id} value={p.title}>{p.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelCls}>
+                                    <Building size={12} />
+                                    {t('employees.create.department')}
+                                </label>
+                                <select
+                                    value={form.department}
+                                    onChange={e => setForm(prev => ({ ...prev, department: e.target.value }))}
+                                    className={inputCls}
+                                >
+                                    <option value="">{t('employees.create.departmentPlaceholder')}</option>
+                                    {(apiDepartments || []).map(d => (
+                                        <option key={d.id} value={d.name}>{d.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label className={labelCls}>
-                                <Building size={12} />
-                                {t('employees.create.department')}
-                            </label>
-                            <select
-                                value={form.department}
-                                onChange={e => setForm(prev => ({ ...prev, department: e.target.value }))}
-                                className={inputCls}
-                            >
-                                <option value="">{t('employees.create.departmentPlaceholder')}</option>
-                                {(apiDepartments || []).map(d => (
-                                    <option key={d.id} value={d.name}>{d.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+                    )}
 
                     {/* Start Date + Work Days */}
                     <div className="grid grid-cols-2 gap-4">

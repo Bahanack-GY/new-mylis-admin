@@ -38,6 +38,7 @@ export interface ClientData {
         name: string;
         description: string;
         budget: number;
+        revenue: number;
         startDate?: string;
         endDate?: string;
         tasks?: { id: string; state: string }[];
@@ -113,6 +114,7 @@ const ClientDetailLayout = () => {
             name: p.name,
             description: p.description || '',
             budget: p.budget || 0,
+            revenue: p.revenue || 0,
             startDate: p.startDate,
             endDate: p.endDate,
             tasks: p.tasks,

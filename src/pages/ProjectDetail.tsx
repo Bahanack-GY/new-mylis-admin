@@ -13,7 +13,8 @@ import {
     Eye,
     CircleDot,
     Circle,
-    Users
+    Users,
+    Pencil
 } from 'lucide-react';
 import {
     XAxis,
@@ -33,6 +34,7 @@ import type { ProjectData } from '../layouts/ProjectDetailLayout';
 interface ProjectDetailProps {
     project: ProjectData;
     activeTab: ProjectTab;
+    onEdit: () => void;
 }
 
 /* ─── Status config ─────────────────────────────────────── */
@@ -60,7 +62,7 @@ const fmtCurrency = (n: number) => `${new Intl.NumberFormat('fr-FR').format(n)} 
 
 const DONUT_COLORS = ['#f59e0b', '#33cbcc', '#3b82f6'];
 
-const OverviewView = ({ project }: { project: ProjectData }) => {
+const OverviewView = ({ project, onEdit }: { project: ProjectData; onEdit: () => void }) => {
     const { t } = useTranslation();
 
     const daysRemaining = project.endDate
@@ -101,10 +103,12 @@ const OverviewView = ({ project }: { project: ProjectData }) => {
         fill: STATE_COLORS[state],
     })).filter(d => d.count > 0);
 
+    const profit = project.revenue - project.budget;
     const stats = [
         { label: t('projectDetail.overview.progress'), value: `${project.progress}%`, icon: TrendingUp, color: '#33cbcc' },
         { label: t('projectDetail.overview.tasksDone'), value: `${project.tasksDone}/${project.tasksTotal}`, icon: CheckCircle, color: '#3b82f6' },
-        { label: t('projectDetail.overview.revenue'), value: fmtCurrency(project.budget), icon: Wallet, color: '#8b5cf6' },
+        { label: t('projects.formCost'), value: project.budget > 0 ? fmtCurrency(project.budget) : '—', icon: Wallet, color: '#8b5cf6' },
+        { label: t('projects.formRevenue'), value: project.revenue > 0 ? fmtCurrency(project.revenue) : '—', icon: TrendingUp, color: profit >= 0 ? '#22c55e' : '#f43f5e' },
         { label: t('projectDetail.overview.daysLeft'), value: `${daysRemaining}`, icon: Clock, color: project.status === 'overdue' ? '#f43f5e' : '#f59e0b' },
     ];
 
@@ -124,6 +128,13 @@ const OverviewView = ({ project }: { project: ProjectData }) => {
                     </div>
                     <p className="text-gray-500">{project.description}</p>
                 </div>
+                <button
+                    onClick={onEdit}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#33cbcc] text-white text-sm font-semibold hover:bg-[#2bb5b6] transition-colors shadow-lg shadow-[#33cbcc]/20 shrink-0"
+                >
+                    <Pencil size={15} />
+                    {t('projects.editTitle')}
+                </button>
                 {/* Members avatars */}
                 {project.members.length > 0 && (
                     <div className="flex items-center gap-2">
@@ -149,7 +160,7 @@ const OverviewView = ({ project }: { project: ProjectData }) => {
             </div>
 
             {/* Stats row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
                 {stats.map((stat, i) => (
                     <motion.div
                         key={i}
@@ -273,7 +284,7 @@ const OverviewView = ({ project }: { project: ProjectData }) => {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }} className="bg-white rounded-2xl p-5 border border-gray-100">
                     <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
                         <Calendar size={14} />
-                        {t('projects.endDate')}
+                        {t('projects.formDueDate')}
                     </div>
                     <p className="font-semibold text-gray-800">{fmtDate(project.endDate)}</p>
                 </motion.div>
@@ -402,27 +413,29 @@ const TasksView = ({ project }: { project: ProjectData }) => {
 const BudgetView = ({ project }: { project: ProjectData }) => {
     const { t } = useTranslation();
 
-    const budget = project.budget;
-    const spent = Math.round(budget * (project.progress / 100));
-    const remaining = budget - spent;
+    const cost = project.budget;
+    const revenue = project.revenue;
+    const profit = revenue - cost;
+    const spent = Math.round(cost * (project.progress / 100));
+    const remaining = cost - spent;
 
     const budgetStats = [
-        { label: t('projectDetail.budget.totalBudget'), value: fmtCurrency(budget), color: '#33cbcc', icon: Wallet },
-        { label: t('projectDetail.budget.expenses'), value: fmtCurrency(spent), color: '#f43f5e', icon: TrendingUp },
-        { label: t('projectDetail.budget.revenue'), value: fmtCurrency(remaining), color: '#3b82f6', icon: TrendingUp },
-        { label: t('projectDetail.budget.profit'), value: `${project.progress}%`, color: '#22c55e', icon: Wallet },
+        { label: t('projects.formCost'), value: cost > 0 ? fmtCurrency(cost) : '—', color: '#8b5cf6', icon: Wallet },
+        { label: t('projects.formRevenue'), value: revenue > 0 ? fmtCurrency(revenue) : '—', color: '#33cbcc', icon: TrendingUp },
+        { label: t('projectDetail.budget.profit'), value: (cost > 0 || revenue > 0) ? fmtCurrency(profit) : '—', color: profit >= 0 ? '#22c55e' : '#f43f5e', icon: TrendingUp },
+        { label: t('projectDetail.budget.remaining'), value: cost > 0 ? fmtCurrency(remaining) : '—', color: '#3b82f6', icon: Wallet },
     ];
 
     const donutData = [
         { name: t('projectDetail.budget.expenses'), value: spent },
-        { name: t('projectDetail.budget.remaining'), value: remaining },
+        { name: t('projectDetail.budget.remaining'), value: Math.max(0, remaining) },
     ];
     const PIE_COLORS = ['#f43f5e', '#33cbcc'];
 
     // Per-difficulty cost allocation
     const DIFF_WEIGHTS: Record<string, number> = { EASY: 1, MEDIUM: 2, HARD: 4 };
     const totalWeight = project.tasks.reduce((s, tk) => s + (DIFF_WEIGHTS[tk.difficulty || 'MEDIUM'] || 2), 0) || 1;
-    const costPerWeight = budget / totalWeight;
+    const costPerWeight = cost / totalWeight;
     const diffBreakdown = ['EASY', 'MEDIUM', 'HARD'].map(d => ({
         name: d,
         amount: Math.round(project.tasks.filter(tk => (tk.difficulty || 'MEDIUM') === d).reduce((s) => s + (DIFF_WEIGHTS[d] || 2) * costPerWeight, 0)),
@@ -733,10 +746,10 @@ const TimelineView = ({ project }: { project: ProjectData }) => {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 
-const ProjectDetail = ({ project, activeTab }: ProjectDetailProps) => {
+const ProjectDetail = ({ project, activeTab, onEdit }: ProjectDetailProps) => {
     switch (activeTab) {
         case 'overview':
-            return <OverviewView project={project} />;
+            return <OverviewView project={project} onEdit={onEdit} />;
         case 'tasks':
             return <TasksView project={project} />;
         case 'budget':
@@ -746,7 +759,7 @@ const ProjectDetail = ({ project, activeTab }: ProjectDetailProps) => {
         case 'timeline':
             return <TimelineView project={project} />;
         default:
-            return <OverviewView project={project} />;
+            return <OverviewView project={project} onEdit={onEdit} />;
     }
 };
 

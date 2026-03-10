@@ -49,7 +49,7 @@ const Header = () => {
             <div className="flex items-center gap-6">
                 
                 {/* Language Toggle (Bonus) */}
-                <button 
+                <button
                     onClick={toggleLanguage}
                     className="text-sm font-semibold text-gray-600 hover:text-[#33cbcc] uppercase"
                 >

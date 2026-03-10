@@ -21,9 +21,10 @@ import {
   Upload,
   FileText,
   Trash2,
-  Loader2
+  Loader2,
+  Pencil
 } from 'lucide-react';
-import { useProjects, useCreateProject } from '../api/projects/hooks';
+import { useProjects, useCreateProject, useProject, useUpdateProject } from '../api/projects/hooks';
 import { useDepartments } from '../api/departments/hooks';
 import { useClients, useCreateClient } from '../api/clients/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
@@ -56,6 +57,7 @@ interface Project {
   tasksTotal: number;
   tasksDone: number;
   budget: string;
+  revenue: string;
   category: string;
 }
 
@@ -657,6 +659,7 @@ const CreateProjectModal = ({ onClose }: { onClose: () => void }) => {
                   departmentId: selectedDept?.id,
                   clientId: selectedClient?.id,
                   budget: form.cost ? parseFloat(form.cost) : undefined,
+                  revenue: form.revenue ? parseFloat(form.revenue) : undefined,
                   startDate: form.startDate || undefined,
                   endDate: form.dueDate || undefined,
                 }, { onSuccess: () => onClose() });
@@ -678,6 +681,175 @@ const CreateProjectModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+/* ─── Edit Project Modal ─────────────────────────────────── */
+
+const EditProjectModal = ({ projectId, onClose }: { projectId: string; onClose: () => void }) => {
+  const { t } = useTranslation();
+  const { data: apiProject, isLoading } = useProject(projectId);
+  const updateProject = useUpdateProject();
+  const { data: apiDepartments } = useDepartments();
+  const { data: allClients } = useClients();
+
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    departmentId: '',
+    clientId: '',
+    cost: '',
+    revenue: '',
+    startDate: '',
+    dueDate: '',
+  });
+
+  useEffect(() => {
+    if (apiProject) {
+      setForm({
+        name: apiProject.name || '',
+        description: apiProject.description || '',
+        departmentId: apiProject.departmentId || '',
+        clientId: apiProject.clientId || '',
+        cost: apiProject.budget ? String(apiProject.budget) : '',
+        revenue: apiProject.revenue ? String(apiProject.revenue) : '',
+        startDate: apiProject.startDate ? apiProject.startDate.slice(0, 10) : '',
+        dueDate: apiProject.endDate ? apiProject.endDate.slice(0, 10) : '',
+      });
+    }
+  }, [apiProject]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', handler); document.body.style.overflow = ''; };
+  }, [onClose]);
+
+  const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm(prev => ({ ...prev, [key]: value }));
+
+  const isValid = form.name.trim().length > 0;
+
+  const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
+  const selectCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all appearance-none cursor-pointer';
+  const labelCls = 'flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        onClick={e => e.stopPropagation()}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col"
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#33cbcc]/10 flex items-center justify-center shrink-0">
+              <Pencil size={18} className="text-[#33cbcc]" />
+            </div>
+            <h3 className="text-base font-bold text-gray-800">{t('projects.editTitle')}</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 size={24} className="animate-spin text-[#33cbcc]" />
+          </div>
+        ) : (
+          <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+            <div>
+              <label className={labelCls}><Briefcase size={12} />{t('projects.formName')}</label>
+              <input type="text" value={form.name} onChange={e => update('name', e.target.value)} placeholder={t('projects.formNamePlaceholder')} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}><AlignLeft size={12} />{t('projects.description')}</label>
+              <textarea value={form.description} onChange={e => update('description', e.target.value)} placeholder={t('projects.formDescriptionPlaceholder')} rows={3} className={`${inputCls} resize-none`} />
+            </div>
+            <div>
+              <label className={labelCls}><Building size={12} />{t('projects.formDepartment')}</label>
+              <select value={form.departmentId} onChange={e => update('departmentId', e.target.value)} className={selectCls}>
+                <option value="">{t('projects.formDepartmentPlaceholder')}</option>
+                {(apiDepartments || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}><Users size={12} />{t('projects.formClient')}</label>
+              <select value={form.clientId} onChange={e => update('clientId', e.target.value)} className={selectCls}>
+                <option value="">{t('projects.formClientPlaceholder')}</option>
+                {(allClients || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}><DollarSign size={12} />{t('projects.formCost')}</label>
+                <input type="text" value={form.cost} onChange={e => update('cost', e.target.value)} placeholder="0 FCFA" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}><TrendingUp size={12} />{t('projects.formRevenue')}</label>
+                <input type="text" value={form.revenue} onChange={e => update('revenue', e.target.value)} placeholder="0 FCFA" className={inputCls} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}><Calendar size={12} />{t('projects.startDate')}</label>
+                <input type="date" value={form.startDate} onChange={e => update('startDate', e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}><Calendar size={12} />{t('projects.formDueDate')}</label>
+                <input type="date" value={form.dueDate} onChange={e => update('dueDate', e.target.value)} className={inputCls} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+            {t('projects.formCancel')}
+          </button>
+          <button
+            onClick={() => {
+              if (isValid) {
+                updateProject.mutate({
+                  id: projectId,
+                  dto: {
+                    name: form.name,
+                    description: form.description || undefined,
+                    departmentId: form.departmentId || undefined,
+                    clientId: form.clientId || undefined,
+                    budget: form.cost ? parseFloat(form.cost) : undefined,
+                    revenue: form.revenue ? parseFloat(form.revenue) : undefined,
+                    startDate: form.startDate || undefined,
+                    endDate: form.dueDate || undefined,
+                  },
+                }, { onSuccess: () => onClose() });
+              }
+            }}
+            disabled={!isValid || updateProject.isPending}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors shadow-lg shadow-[#33cbcc]/20 ${
+              isValid ? 'bg-[#33cbcc] hover:bg-[#2bb5b6]' : 'bg-gray-300 cursor-not-allowed shadow-none'
+            }`}
+          >
+            {updateProject.isPending ? <Loader2 size={16} className="animate-spin" /> : <Pencil size={16} />}
+            {t('projects.formSave')}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 /* ─── Component ─────────────────────────────────────────── */
 
 const Projects = () => {
@@ -687,6 +859,7 @@ const Projects = () => {
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editProjectId, setEditProjectId] = useState<string | null>(null);
 
   // API data
   const deptScope = useDepartmentScope();
@@ -714,6 +887,7 @@ const Projects = () => {
           tasksTotal: tasks.length,
           tasksDone,
           budget: p.budget ? `${new Intl.NumberFormat('fr-FR').format(p.budget)} FCFA` : '',
+          revenue: p.revenue ? `${new Intl.NumberFormat('fr-FR').format(p.revenue)} FCFA` : '',
           category: p.department?.name || '',
       };
   });
@@ -977,6 +1151,17 @@ const Projects = () => {
           <ProjectDetailModal
             project={selectedProject}
             onClose={() => setSelectedProject(null)}
+            onEdit={() => { setEditProjectId(selectedProject.id); setSelectedProject(null); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Project Modal */}
+      <AnimatePresence>
+        {editProjectId && (
+          <EditProjectModal
+            projectId={editProjectId}
+            onClose={() => setEditProjectId(null)}
           />
         )}
       </AnimatePresence>
@@ -996,9 +1181,11 @@ const Projects = () => {
 const ProjectDetailModal = ({
   project,
   onClose,
+  onEdit,
 }: {
   project: Project;
   onClose: () => void;
+  onEdit: () => void;
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -1081,8 +1268,12 @@ const ProjectDetailModal = ({
               <p className="font-semibold text-gray-800">{project.department}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-xs text-gray-400 mb-1">{t('projects.budget')}</p>
-              <p className="font-semibold text-gray-800">{project.budget}</p>
+              <p className="text-xs text-gray-400 mb-1">{t('projects.formCost')}</p>
+              <p className="font-semibold text-gray-800">{project.budget || '—'}</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-xs text-gray-400 mb-1">{t('projects.formRevenue')}</p>
+              <p className="font-semibold text-gray-800">{project.revenue || '—'}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="text-xs text-gray-400 mb-1">{t('projects.startDate')}</p>
@@ -1138,6 +1329,13 @@ const ProjectDetailModal = ({
             className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             {t('projects.close')}
+          </button>
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-200"
+          >
+            <Pencil size={16} />
+            {t('projects.editTitle')}
           </button>
           <button
             onClick={() => navigate(`/projects/${project.id}`)}

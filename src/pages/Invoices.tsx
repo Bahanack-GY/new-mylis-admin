@@ -20,6 +20,7 @@ import {
     Briefcase,
     AlignLeft,
     Image,
+    Receipt,
 } from 'lucide-react';
 
 import lisdevImg from '../assets/entete/lisdev.png';
@@ -49,6 +50,7 @@ import { useInvoiceTemplate } from '../api/invoices/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 import { useProjects } from '../api/projects/hooks';
 import { exportInvoicePdf } from '../utils/exportInvoicePdf';
+import { exportReceiptPdf } from '../utils/exportReceiptPdf';
 import {
     BarChart,
     Bar,
@@ -474,6 +476,8 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
     const { data: template } = useInvoiceTemplate(invoice.departmentId || '');
     const [selectedLetterhead, setSelectedLetterhead] = useState<string | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [isExportingReceipt, setIsExportingReceipt] = useState(false);
+    const [showConfirmPay, setShowConfirmPay] = useState(false);
 
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -498,6 +502,20 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
             setIsExporting(false);
         }
     }, [invoice, template, selectedLetterhead, sendInvoice, onClose]);
+
+    const handleExportReceipt = useCallback(async () => {
+        setIsExportingReceipt(true);
+        try {
+            let letterheadBase64: string | undefined;
+            if (selectedLetterhead) {
+                const entry = LETTERHEADS.find(l => l.key === selectedLetterhead);
+                if (entry) letterheadBase64 = await imgToBase64(entry.src);
+            }
+            exportReceiptPdf(invoice, template, letterheadBase64);
+        } finally {
+            setIsExportingReceipt(false);
+        }
+    }, [invoice, template, selectedLetterhead]);
 
     const isOverdue = invoice.status === 'SENT' && invoice.dueDate && new Date(invoice.dueDate) < new Date();
 
@@ -656,14 +674,26 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
 
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
-                        <button
-                            onClick={handleExportPdf}
-                            disabled={isExporting || sendInvoice.isPending}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
-                        >
-                            {(isExporting || sendInvoice.isPending) ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                            {t('invoices.detail.exportPdf')}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleExportPdf}
+                                disabled={isExporting || sendInvoice.isPending}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                            >
+                                {(isExporting || sendInvoice.isPending) ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                {t('invoices.detail.exportPdf')}
+                            </button>
+                            {invoice.status === 'PAID' && (
+                                <button
+                                    onClick={handleExportReceipt}
+                                    disabled={isExportingReceipt}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                                >
+                                    {isExportingReceipt ? <Loader2 size={14} className="animate-spin" /> : <Receipt size={14} />}
+                                    {t('invoices.detail.exportReceipt')}
+                                </button>
+                            )}
+                        </div>
 
                         <div className="flex items-center gap-2">
                             {invoice.status === 'CREATED' && (
@@ -697,7 +727,7 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
                                         {t('invoices.detail.reject')}
                                     </button>
                                     <button
-                                        onClick={() => payInvoice.mutate(invoice.id, { onSuccess: onClose })}
+                                        onClick={() => setShowConfirmPay(true)}
                                         disabled={payInvoice.isPending}
                                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#10B981] hover:bg-[#059669] transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                                     >
@@ -710,6 +740,51 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
                     </div>
                 </div>
             </motion.div>
+
+            {/* Pay Confirmation Modal */}
+            <AnimatePresence>
+                {showConfirmPay && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                        onClick={() => setShowConfirmPay(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="bg-[#1a1f2e] border border-gray-700/50 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl"
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2.5 rounded-xl bg-emerald-500/10">
+                                    <CheckCircle size={20} className="text-emerald-400" />
+                                </div>
+                                <h3 className="text-base font-semibold text-white">{t('invoices.detail.pay')}</h3>
+                            </div>
+                            <p className="text-sm text-gray-400 mb-6">{t('invoices.detail.confirmPay')}</p>
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setShowConfirmPay(false)}
+                                    className="px-4 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
+                                >
+                                    {t('invoices.create.cancel')}
+                                </button>
+                                <button
+                                    onClick={() => { payInvoice.mutate(invoice.id, { onSuccess: onClose }); setShowConfirmPay(false); }}
+                                    disabled={payInvoice.isPending}
+                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#10B981] hover:bg-[#059669] transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                                >
+                                    {payInvoice.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                    {t('invoices.detail.pay')}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

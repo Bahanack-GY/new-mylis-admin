@@ -36,8 +36,7 @@ export const useMessages = (channelId: string | null) => {
         queryKey: ['chat', 'messages', channelId],
         queryFn: () => chatApi.getMessages(channelId!),
         enabled: !!channelId,
-        staleTime: 0,
-        refetchInterval: 10000,
+        staleTime: Infinity,
     });
 
     // Listen for new messages in this channel

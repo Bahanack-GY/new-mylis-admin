@@ -36,14 +36,16 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         const token = localStorage.getItem('access_token');
         if (!token) return;
 
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.mylisapp.online';
 
         const newSocket = io(apiUrl, {
             auth: { token },
-            transports: ['websocket', 'polling'],
+            transports: ['websocket'],
+            upgrade: false,
             reconnection: true,
             reconnectionDelay: 1000,
-            reconnectionAttempts: 10,
+            reconnectionDelayMax: 10000,
+            reconnectionAttempts: Infinity,
         });
 
         setSocket(newSocket);

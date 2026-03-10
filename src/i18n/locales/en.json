@@ -509,7 +509,9 @@
     "formOtherDocs": "Other Documents",
     "formUpload": "Click to upload",
     "formCancel": "Cancel",
-    "formCreate": "Create Project"
+    "formCreate": "Create Project",
+    "editTitle": "Edit Project",
+    "formSave": "Save Changes"
   },
   "tasksPage": {
     "title": "Tasks",
@@ -1015,7 +1017,9 @@
       "project": "Project",
       "meeting": "Meeting",
       "document": "Document",
-      "ticket": "Ticket"
+      "ticket": "Ticket",
+      "message": "Message",
+      "chat": "Mention"
     }
   },
   "messages": {
@@ -1192,6 +1196,7 @@
       "edit": "Edit",
       "delete": "Delete",
       "exportPdf": "Export PDF",
+      "exportReceipt": "Export Receipt",
       "invoiceNumber": "Invoice Number",
       "issuedOn": "Issued On",
       "dueOn": "Due On",

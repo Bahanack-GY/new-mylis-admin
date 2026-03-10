@@ -7,7 +7,8 @@ import {
     Wallet,
     Clock,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Pencil
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ interface ProjectDetailSidebarProps {
     onTabChange: (tab: ProjectTab) => void;
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
+    onEdit: () => void;
 }
 
 const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
@@ -29,7 +31,7 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> 
     overdue:   { bg: 'bg-rose-500/20',     text: 'text-rose-400',    label: 'Overdue' },
 };
 
-const ProjectDetailSidebar = ({ project, activeTab, onTabChange, isOpen, setIsOpen }: ProjectDetailSidebarProps) => {
+const ProjectDetailSidebar = ({ project, activeTab, onTabChange, isOpen, setIsOpen, onEdit }: ProjectDetailSidebarProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
 
@@ -146,6 +148,34 @@ const ProjectDetailSidebar = ({ project, activeTab, onTabChange, isOpen, setIsOp
                         </div>
                     );
                 })}
+            </div>
+
+            {/* Edit Button */}
+            <div className="px-4 py-4 border-t border-gray-700/50">
+                <div
+                    onClick={onEdit}
+                    className="flex items-center p-3 rounded-xl cursor-pointer transition-all duration-200 group relative text-gray-400 hover:bg-[#33cbcc]/10 hover:text-[#33cbcc]"
+                >
+                    <Pencil size={20} className="min-w-[20px]" />
+                    <AnimatePresence>
+                        {isOpen && (
+                            <motion.span
+                                initial={{ opacity: 0, width: 0 }}
+                                animate={{ opacity: 1, width: 'auto' }}
+                                exit={{ opacity: 0, width: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="ml-4 font-medium text-sm whitespace-nowrap overflow-hidden"
+                            >
+                                {t('projects.editTitle')}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
+                    {!isOpen && (
+                        <div className="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                            {t('projects.editTitle')}
+                        </div>
+                    )}
+                </div>
             </div>
         </motion.div>
     );

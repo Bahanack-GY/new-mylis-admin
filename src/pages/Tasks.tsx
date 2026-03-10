@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft, ChevronRight, Flag, Search, X,
     ArrowLeft, Clock, Plus, CalendarDays,
-    AlignLeft, Briefcase, BarChart3, RefreshCw, Loader2
+    AlignLeft, Briefcase, BarChart3, RefreshCw, Loader2, Zap
 } from 'lucide-react';
 import { useTasks, useCreateTask, useUpdateTask } from '../api/tasks/hooks';
 import { useEmployees } from '../api/employees/hooks';
@@ -30,6 +30,7 @@ interface GanttTask {
     lane?: number;
     projectId?: string;
     difficulty?: string;
+    selfAssigned?: boolean;
 }
 
 interface EmployeeRow {
@@ -160,6 +161,12 @@ const TaskDetailModal = ({ task, employee, onClose }: { task: GanttTask; employe
                                 <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.border }} />
                                 <h3 className="text-lg font-bold text-gray-800 truncate">{task.title}</h3>
                                 {task.hasFlag && <Flag size={14} className="text-amber-500 shrink-0" />}
+                                {task.selfAssigned && (
+                                    <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#33cbcc]/10 text-[#33cbcc] shrink-0">
+                                        <Zap size={10} />
+                                        Self-assigned
+                                    </span>
+                                )}
                             </div>
                             <p className="text-sm text-gray-500 pl-5">{task.subtitle}</p>
                         </div>
@@ -587,6 +594,7 @@ const Tasks = () => {
                 color: (TASK_COLOR_MAP[t.difficulty] || 'blue') as ColorKey,
                 status: (STATE_STATUS_MAP[t.state] || 'todo') as 'todo' | 'in_progress' | 'done',
                 description: t.description || undefined,
+                selfAssigned: t.selfAssigned || false,
             };
         });
 
@@ -1192,6 +1200,9 @@ const Tasks = () => {
                                                     )}
                                                     {!narrow && task.hasFlag && (
                                                         <Flag size={12} className="shrink-0 opacity-50" style={{ color: c.text }} />
+                                                    )}
+                                                    {!narrow && task.selfAssigned && (
+                                                        <Zap size={12} className="shrink-0 opacity-70" style={{ color: c.text }} />
                                                     )}
                                                 </div>
 

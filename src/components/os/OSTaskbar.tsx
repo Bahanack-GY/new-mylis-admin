@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
-import { Monitor, Minimize2, Maximize2, X } from 'lucide-react';
+import { Monitor, Minimize2, Maximize2, X, LayoutDashboard } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { appRegistry } from './osAppRegistry';
 import OSMacIcon from './OSMacIcon';
 import OSSystemTray from './OSSystemTray';
@@ -28,6 +29,8 @@ export default function OSTaskbar({
   onCloseWindow,
   onContextMenu,
 }: OSTaskbarProps) {
+  const navigate = useNavigate();
+
   const handleWindowContextMenu = useCallback(
     (e: React.MouseEvent, w: WindowState) => {
       e.preventDefault();
@@ -100,6 +103,16 @@ export default function OSTaskbar({
           );
         })}
       </div>
+
+      {/* Dashboard toggle */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        title="Switch to Dashboard view"
+        className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-[#33cbcc] transition-colors border border-white/10 ml-2"
+      >
+        <LayoutDashboard size={16} />
+        <span>Dashboard</span>
+      </button>
 
       {/* System tray */}
       <OSSystemTray />

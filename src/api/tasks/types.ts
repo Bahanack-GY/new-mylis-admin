@@ -12,6 +12,7 @@ export interface Task {
     endDate?: string;
     startTime?: string;
     endTime?: string;
+    selfAssigned?: boolean;
     assignedToId: string;
     assignedToTeamId: string;
     projectId: string;

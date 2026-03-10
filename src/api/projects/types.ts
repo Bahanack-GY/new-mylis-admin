@@ -5,6 +5,7 @@ export interface Project {
     clientId: string;
     departmentId: string;
     budget?: number;
+    revenue?: number;
     startDate?: string;
     endDate?: string;
     client?: { id: string; name: string };
@@ -29,6 +30,7 @@ export interface CreateProjectDto {
     clientId?: string;
     departmentId?: string;
     budget?: number;
+    revenue?: number;
     startDate?: string;
     endDate?: string;
 }

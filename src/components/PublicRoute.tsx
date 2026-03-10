@@ -14,8 +14,7 @@ const PublicRoute = ({ children }: { children?: React.ReactNode }) => {
     }
 
     if (isAuthenticated) {
-        const target = window.innerWidth < 768 ? '/dashboard' : '/os';
-        return <Navigate to={target} replace />;
+        return <Navigate to="/dashboard" replace />;
     }
 
     return children ? <>{children}</> : <Outlet />;

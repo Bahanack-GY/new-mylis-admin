@@ -135,6 +135,7 @@ const EditEmployeeModal = ({ employee, onClose }: { employee: EmployeeUI; onClos
     const [form, setForm] = useState({
         firstName: employee.firstName || '',
         lastName: employee.lastName || '',
+        email: employee.user?.email || employee.email || '',
         phoneNumber: employee.phoneNumber || employee.phone || '',
         address: employee.address || '',
         salary: employee.salary ? String(employee.salary) : '',
@@ -204,6 +205,7 @@ const EditEmployeeModal = ({ employee, onClose }: { employee: EmployeeUI; onClos
             dto: {
                 firstName: form.firstName,
                 lastName: form.lastName,
+                email: form.email || undefined,
                 phoneNumber: form.phoneNumber || undefined,
                 address: form.address || undefined,
                 salary: form.salary ? Number(form.salary) : undefined,
@@ -328,6 +330,20 @@ const EditEmployeeModal = ({ employee, onClose }: { employee: EmployeeUI; onClos
                                 className={inputCls}
                             />
                         </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                        <label className={labelCls}>
+                            <Mail size={12} />
+                            {t('employees.create.email')}
+                        </label>
+                        <input
+                            type="email"
+                            value={form.email}
+                            onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
+                            className={inputCls}
+                        />
                     </div>
 
                     {/* Phone + Address */}

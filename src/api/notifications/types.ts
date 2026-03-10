@@ -1,4 +1,4 @@
-export type NotificationType = 'system' | 'task' | 'project' | 'meeting' | 'document' | 'ticket';
+export type NotificationType = 'system' | 'task' | 'project' | 'meeting' | 'document' | 'ticket' | 'message' | 'chat';
 
 export interface Notification {
     id: string;
@@ -9,4 +9,5 @@ export interface Notification {
     userId: string;
     createdAt: string;
     updatedAt: string;
+    meta?: { channelId?: string } | null;
 }
