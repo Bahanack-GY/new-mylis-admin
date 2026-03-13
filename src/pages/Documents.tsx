@@ -18,7 +18,8 @@ import {
     Building,
     Loader2
 } from 'lucide-react';
-import { useDocuments, useCreateDocument, useStorageInfo } from '../api/documents/hooks';
+import { useDocuments, useCreateDocument, useStorageInfo, useDeleteDocument } from '../api/documents/hooks';
+import { DocumentsAdminSkeleton } from '../components/Skeleton';
 import { documentsApi } from '../api/documents/api';
 import { useEmployees } from '../api/employees/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
@@ -41,6 +42,7 @@ type DocCategory = 'Contract' | 'SRS' | 'Design' | 'Technical' | 'Notes' | 'Brie
 
 interface DocItem {
     id: string;
+    dbId?: string; // real DB id for deletion (only for hr documents)
     name: string;
     type: DocCategory;
     size: string;
@@ -307,6 +309,7 @@ const Documents = () => {
 
     // API data
     const { data: apiDocuments, isLoading: isLoadingDocs } = useDocuments();
+    const deleteDocument = useDeleteDocument();
     const deptScope = useDepartmentScope();
     const { data: employees, isLoading: isLoadingEmployees } = useEmployees(deptScope);
     const { data: storageInfo } = useStorageInfo();
@@ -325,6 +328,7 @@ const Documents = () => {
     };
     const hrDocuments: DocItem[] = (apiDocuments || []).map((d) => ({
         id: `doc-${d.id}`,
+        dbId: d.id,
         name: d.name,
         type: CATEGORY_DISPLAY_MAP[d.category] || 'Technical',
         size: '',
@@ -392,11 +396,7 @@ const Documents = () => {
     }, [documents]);
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <DocumentsAdminSkeleton />;
     }
 
     /* Filtered documents */
@@ -630,9 +630,14 @@ const Documents = () => {
                                             </button>
                                         </>
                                     )}
-                                    <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors">
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {doc.dbId && (
+                                        <button
+                                            onClick={() => { if (window.confirm('Delete this document?')) deleteDocument.mutate(doc.dbId!); }}
+                                            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -752,9 +757,14 @@ const Documents = () => {
                                         </button>
                                     </>
                                 )}
-                                <button className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors">
-                                    <Trash2 size={14} />
-                                </button>
+                                {doc.dbId && (
+                                    <button
+                                        onClick={() => { if (window.confirm('Delete this document?')) deleteDocument.mutate(doc.dbId!); }}
+                                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     ))}

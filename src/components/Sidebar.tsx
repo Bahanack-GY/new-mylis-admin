@@ -37,6 +37,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
   const logout = useLogout();
   const { role } = useAuth();
   const isHOD = role === 'HEAD_OF_DEPARTMENT';
+  const isAccountant = role === 'ACCOUNTANT';
 
   const allMenuItems = [
     { icon: LayoutDashboard, label: 'dashboard', path: '/dashboard' },
@@ -56,7 +57,22 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }: SidebarProps) => {
     // { icon: Settings, label: 'settings', path: '/settings', managerOnly: true },
   ];
 
-  const menuItems = isHOD ? allMenuItems.filter(item => !item.managerOnly) : allMenuItems;
+  const accountantMenuItems = [
+    { icon: LayoutDashboard, label: 'dashboard', path: '/dashboard' },
+    { icon: Users, label: 'employees', path: '/employees' },
+    { icon: Receipt, label: 'invoices', path: '/invoices' },
+    { icon: Wallet, label: 'expenses', path: '/expenses' },
+    { icon: HandCoins, label: 'demands', path: '/demands' },
+    { icon: UserCircle, label: 'clients', path: '/clients' },
+    { icon: FileText, label: 'documents', path: '/documents' },
+    { icon: MessageSquare, label: 'messages', path: '/messages' },
+  ];
+
+  const menuItems = isAccountant
+    ? accountantMenuItems
+    : isHOD
+    ? allMenuItems.filter(item => !item.managerOnly)
+    : allMenuItems;
 
   return (
     <motion.div 

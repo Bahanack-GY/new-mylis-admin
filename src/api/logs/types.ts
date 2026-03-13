@@ -15,3 +15,18 @@ export interface Log {
         };
     };
 }
+
+export interface LogsPage {
+    data: Log[];
+    total: number;
+    page: number;
+    totalPages: number;
+}
+
+export interface LogsStats {
+    total: number;
+    todayCount: number;
+    activeUsers: number;
+    topAction: string | null;
+    chartData: { day: string; count: number }[];
+}

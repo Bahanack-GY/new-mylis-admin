@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsApi } from './api';
 import type { CreateClientDto, UpdateClientDto } from './types';
+import { toast } from 'sonner';
 
 export const clientKeys = {
     all: ['clients'] as const,
@@ -32,7 +33,11 @@ export const useCreateClient = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateClientDto) => clientsApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: clientKeys.all }),
+        onSuccess: () => {
+            toast.success('Client created');
+            qc.invalidateQueries({ queryKey: clientKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -42,9 +47,11 @@ export const useUpdateClient = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateClientDto }) =>
             clientsApi.update(id, dto),
         onSuccess: (_, { id }) => {
+            toast.success('Client updated');
             qc.invalidateQueries({ queryKey: clientKeys.all });
             qc.invalidateQueries({ queryKey: clientKeys.detail(id) });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -52,6 +59,10 @@ export const useDeleteClient = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => clientsApi.delete(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: clientKeys.all }),
+        onSuccess: () => {
+            toast.success('Client deleted');
+            qc.invalidateQueries({ queryKey: clientKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };

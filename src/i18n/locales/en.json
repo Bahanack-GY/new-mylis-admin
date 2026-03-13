@@ -25,6 +25,11 @@
     "leaderboard": "Top Employees",
     "addEmployee": "Add Employee",
     "addManager": "Add Manager",
+    "addAccountant": "Add Accountant",
+    "createAccountant": {
+      "title": "Create Accountant Account",
+      "submit": "Create Accountant"
+    },
     "createManager": {
       "title": "Create Manager Account",
       "description": "Create a new manager account with full admin access.",
@@ -110,7 +115,11 @@
       "dragOrClick": "Click or drag to upload",
       "maxSize": "Max 2MB, JPG/PNG",
       "save": "Save Changes",
-      "saving": "Saving..."
+      "saving": "Saving...",
+      "changePassword": "Change Password",
+      "newPasswordPlaceholder": "New password (min. 6 characters)",
+      "setPassword": "Set Password",
+      "passwordUpdated": "Password updated"
     }
   },
   "employeeSidebar": {
@@ -130,6 +139,10 @@
     "showAll": "Show all",
     "emptyState": "No items yet",
     "noFile": "No file",
+    "addDocument": "Add document",
+    "docName": "Document name",
+    "clickToUpload": "Click to select file",
+    "upload": "Upload",
     "viewDocument": "View document",
     "downloadDocument": "Download document",
     "cancel": "Cancel",
@@ -240,13 +253,21 @@
       "taskDetail": "Task Details",
       "noDescription": "No description",
       "status": "Status",
+      "startedAt": "Started At",
+      "completedAt": "Completed At",
       "items": {
         "meetTeam": "Meet your team",
         "accessCredentials": "Get access credentials from the project manager",
         "reviewDesign": "Read the brand book and UI kit",
         "reviewProject": "Review the current project in Figma",
         "reviewHandbook": "Review the employee handbook"
-      }
+      },
+      "editTask": "Edit Task",
+      "deleteTask": "Delete Task",
+      "viewHistory": "History",
+      "confirmDelete": "Are you sure you want to delete this task?",
+      "historyTitle": "Edit History",
+      "historyEmpty": "No edit history yet."
     },
     "goals": {
       "title": "Goals tracker",
@@ -539,8 +560,8 @@
     "description": "Description",
     "noResults": "No results",
     "addTask": "New Task",
-    "titlePlaceholder": "Task title...",
-    "descriptionPlaceholder": "Task description...",
+    "titlePlaceholder": "Task title",
+    "descriptionPlaceholder": "Description",
     "project": "Project",
     "projectNone": "No project",
     "time": "Time",
@@ -563,7 +584,18 @@
     "taskNumber": "Task",
     "tasksReady": "task(s) ready",
     "cancel": "Cancel",
-    "createTask": "Create Task"
+    "createTask": "Create Task",
+    "editTask": "Edit Task",
+    "deleteTask": "Delete Task",
+    "viewHistory": "History",
+    "confirmDelete": "Are you sure you want to delete this task?",
+    "historyTitle": "Edit History",
+    "historyEmpty": "No edit history yet.",
+    "save": "Save Changes",
+    "calendarView": "Calendar",
+    "boardView": "Board",
+    "allEmployees": "All Employees",
+    "allDepartments": "All Departments"
   },
   "projectSidebar": {
     "back": "Back to projects",
@@ -607,7 +639,8 @@
       "expenseBreakdown": "Budget Utilization",
       "monthlySpend": "Cost by Difficulty",
       "remaining": "Remaining",
-      "utilization": "Utilization"
+      "utilization": "Utilization",
+      "addExpense": "Add Expense"
     },
     "documents": {
       "title": "Project Documents",
@@ -626,6 +659,7 @@
     "title": "Departments",
     "subtitle": "Organizational structure & team overview",
     "addDepartment": "Add Department",
+    "manageRoles": "Manage Roles",
     "stats": {
       "total": "Total Departments",
       "employees": "Total Employees",
@@ -1399,5 +1433,66 @@
       "status": "Status",
       "date": "Date"
     }
+  },
+  "common": {
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "toast": {
+    "success": "Success",
+    "error": "Something went wrong",
+    "employeeCreated": "Employee created",
+    "employeeUpdated": "Employee updated",
+    "employeeDeleted": "Employee deleted",
+    "employeeDismissed": "Employee dismissed",
+    "employeeReinstated": "Employee reinstated",
+    "passwordChanged": "Password changed",
+    "passwordChangeFailed": "Failed to change password",
+    "taskCreated": "Task created",
+    "taskUpdated": "Task updated",
+    "taskDeleted": "Task deleted",
+    "projectCreated": "Project created",
+    "projectUpdated": "Project updated",
+    "projectDeleted": "Project deleted",
+    "departmentCreated": "Department created",
+    "departmentUpdated": "Department updated",
+    "goalAdded": "Goal added",
+    "goalUpdated": "Goal updated",
+    "goalDeleted": "Goal deleted",
+    "clientCreated": "Client created",
+    "clientUpdated": "Client updated",
+    "clientDeleted": "Client deleted",
+    "meetingScheduled": "Meeting scheduled",
+    "meetingUpdated": "Meeting updated",
+    "meetingDeleted": "Meeting deleted",
+    "invoiceCreated": "Invoice created",
+    "invoiceUpdated": "Invoice updated",
+    "invoiceSent": "Invoice sent",
+    "invoicePaid": "Invoice marked as paid",
+    "invoiceRejected": "Invoice rejected",
+    "invoiceDeleted": "Invoice deleted",
+    "templateSaved": "Template saved",
+    "expenseRecorded": "Expense recorded",
+    "expenseUpdated": "Expense updated",
+    "expenseDeleted": "Expense deleted",
+    "documentUploaded": "Document uploaded",
+    "documentDeleted": "Document deleted",
+    "ticketCreated": "Ticket created",
+    "ticketAccepted": "Ticket accepted",
+    "ticketClosed": "Ticket closed",
+    "demandApproved": "Demand approved",
+    "demandRejected": "Demand rejected",
+    "sanctionCreated": "Sanction created",
+    "sanctionDeleted": "Sanction deleted",
+    "formationCreated": "Training created",
+    "positionCreated": "Position created",
+    "positionUpdated": "Position updated",
+    "positionDeleted": "Position deleted",
+    "teamCreated": "Team created",
+    "interviewScheduled": "Interview scheduled",
+    "allNotificationsRead": "All notifications marked as read",
+    "loginFailed": "Login failed. Check your credentials.",
+    "accessDenied": "Access denied: insufficient permissions",
+    "accountCreated": "Account created"
   }
 }

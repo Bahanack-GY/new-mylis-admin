@@ -18,9 +18,9 @@ import {
     ListChecks,
     CalendarDays,
     FolderOpen,
-    Loader2,
 } from 'lucide-react';
 import { useProfile } from '../api/auth/hooks';
+import { ProfileAdminSkeleton } from '../components/Skeleton';
 
 /* ─── Profile Data ──────────────────────────────────────── */
 
@@ -203,30 +203,26 @@ const Profile = () => {
 
     // Use only API data, empty defaults when no data
     const profile: ProfileData = {
-        firstName: apiProfile?.email?.split('@')[0] || '',
-        lastName: '',
+        firstName: apiProfile?.firstName || '',
+        lastName: apiProfile?.lastName || '',
         email: apiProfile?.email || '',
-        phone: '',
-        dateOfBirth: '',
+        phone: apiProfile?.phoneNumber || '',
+        dateOfBirth: apiProfile?.birthDate ? apiProfile.birthDate.split('T')[0] : '',
         gender: '',
-        avatar: '',
+        avatar: apiProfile?.avatarUrl || '',
         role: apiProfile?.role || '',
-        department: '',
-        employeeId: '',
-        joinDate: '',
+        department: apiProfile?.departmentName || '',
+        employeeId: apiProfile?.employeeId || '',
+        joinDate: apiProfile?.hireDate ? new Date(apiProfile.hireDate).toLocaleDateString() : '',
         manager: '',
-        location: '',
+        location: apiProfile?.address || '',
         timezone: '',
         bio: '',
-        skills: [],
+        skills: apiProfile?.skills || [],
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <ProfileAdminSkeleton />;
     }
 
     const stats = [

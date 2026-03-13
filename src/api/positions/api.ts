@@ -10,4 +10,10 @@ export const positionsApi = {
 
     create: (dto: CreatePositionDto) =>
         api.post<Position>('/organization/positions', dto).then(r => r.data),
+
+    update: (id: string, dto: Partial<CreatePositionDto>) =>
+        api.patch<Position>(`/organization/positions/${id}`, dto).then(r => r.data),
+
+    delete: (id: string) =>
+        api.delete(`/organization/positions/${id}`).then(r => r.data),
 };

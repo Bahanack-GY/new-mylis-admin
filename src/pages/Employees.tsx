@@ -27,8 +27,13 @@ import {
     CheckCircle,
     Camera,
     Shield,
+    Calculator,
+    LayoutGrid,
+    List,
+    ArrowUpRight,
 } from 'lucide-react';
 import { useEmployees, useCreateEmployee, useLeaderboard } from '../api/employees/hooks';
+import { EmployeesSkeleton } from '../components/Skeleton';
 import { useDepartmentScope, useAuth } from '../contexts/AuthContext';
 import { useDepartments } from '../api/departments/hooks';
 import { usePositions } from '../api/positions/hooks';
@@ -45,7 +50,7 @@ const SKILLS = [
 
 /* ─── Create Employee Modal ────────────────────────────── */
 
-const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => void; managerMode?: boolean }) => {
+const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = false }: { onClose: () => void; managerMode?: boolean; accountantMode?: boolean }) => {
     const { t } = useTranslation();
     const createEmployee = useCreateEmployee();
     const { data: apiDepartments } = useDepartments();
@@ -141,7 +146,7 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
         }));
     };
 
-    const isValid = form.firstName.trim().length > 0 && form.lastName.trim().length > 0 && (managerMode || (form.role !== '' && form.department !== ''));
+    const isValid = form.firstName.trim().length > 0 && form.lastName.trim().length > 0 && (managerMode || accountantMode || (form.role !== '' && form.department !== ''));
 
     const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
     const labelCls = 'flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
@@ -167,9 +172,9 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
                 <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[#33cbcc]/10 flex items-center justify-center">
-                            {managerMode ? <Shield size={20} className="text-[#33cbcc]" /> : <UserPlus size={20} className="text-[#33cbcc]" />}
+                            {managerMode ? <Shield size={20} className="text-[#33cbcc]" /> : accountantMode ? <Calculator size={20} className="text-[#33cbcc]" /> : <UserPlus size={20} className="text-[#33cbcc]" />}
                         </div>
-                        <h2 className="text-lg font-bold text-gray-800">{managerMode ? t('employees.createManager.title') : t('employees.create.title')}</h2>
+                        <h2 className="text-lg font-bold text-gray-800">{managerMode ? t('employees.createManager.title') : accountantMode ? t('employees.createAccountant.title') : t('employees.create.title')}</h2>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
                         <X size={18} />
@@ -378,8 +383,8 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
                         </div>
                     </div>
 
-                    {/* Role + Department (not shown for managers) */}
-                    {!managerMode && (
+                    {/* Role + Department (not shown for managers or accountants) */}
+                    {!managerMode && !accountantMode && (
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className={labelCls}>
@@ -720,7 +725,7 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
                                     avatarUrl: form.avatarUrl || undefined,
                                     educationDocs: uploadedEducationDocs,
                                     recruitmentDocs: uploadedRecruitmentDocs,
-                                    ...(managerMode ? { userRole: 'MANAGER' } : {}),
+                                    ...(managerMode ? { userRole: 'MANAGER' } : accountantMode ? { userRole: 'ACCOUNTANT' } : {}),
                                 }, {
                                     onSuccess: () => onClose(),
                                     onSettled: () => setIsUploading(false),
@@ -736,8 +741,8 @@ const CreateEmployeeModal = ({ onClose, managerMode = false }: { onClose: () => 
                                 : 'bg-gray-300 cursor-not-allowed shadow-none'
                         }`}
                     >
-                        {(createEmployee.isPending || isUploading) ? <Loader2 size={16} className="animate-spin" /> : managerMode ? <Shield size={16} /> : <Plus size={16} />}
-                        {isUploading ? t('employees.create.uploading') : managerMode ? t('employees.createManager.submit') : t('employees.create.submit')}
+                        {(createEmployee.isPending || isUploading) ? <Loader2 size={16} className="animate-spin" /> : managerMode ? <Shield size={16} /> : accountantMode ? <Calculator size={16} /> : <Plus size={16} />}
+                        {isUploading ? t('employees.create.uploading') : managerMode ? t('employees.createManager.submit') : accountantMode ? t('employees.createAccountant.submit') : t('employees.create.submit')}
                     </button>
                 </div>
             </motion.div>
@@ -754,6 +759,8 @@ const Employees = () => {
     const [selectedDepartment, setSelectedDepartment] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showManagerModal, setShowManagerModal] = useState(false);
+    const [showAccountantModal, setShowAccountantModal] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const deptScope = useDepartmentScope();
     const { role } = useAuth();
     const isManager = role === 'MANAGER';
@@ -800,6 +807,15 @@ const Employees = () => {
                     </div>
                     {isManager && (
                         <button
+                            onClick={() => setShowAccountantModal(true)}
+                            className="flex items-center gap-2 bg-white text-[#33cbcc] border border-[#33cbcc]/30 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#33cbcc]/5 transition-colors"
+                        >
+                            <Calculator size={16} />
+                            {t('employees.addAccountant')}
+                        </button>
+                    )}
+                    {isManager && (
+                        <button
                             onClick={() => setShowManagerModal(true)}
                             className="flex items-center gap-2 bg-white text-[#33cbcc] border border-[#33cbcc]/30 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#33cbcc]/5 transition-colors"
                         >
@@ -807,13 +823,15 @@ const Employees = () => {
                             {t('employees.addManager')}
                         </button>
                     )}
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="flex items-center gap-2 bg-[#33cbcc] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#2bb5b6] transition-colors shadow-lg shadow-[#33cbcc]/20"
-                    >
-                        <UserPlus size={16} />
-                        {t('employees.addEmployee')}
-                    </button>
+                    {role !== 'ACCOUNTANT' && (
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="flex items-center gap-2 bg-[#33cbcc] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#2bb5b6] transition-colors shadow-lg shadow-[#33cbcc]/20"
+                        >
+                            <UserPlus size={16} />
+                            {t('employees.addEmployee')}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -831,6 +849,21 @@ const Employees = () => {
                  </div>
 
                  <div className="flex gap-4">
+                     {/* View toggle */}
+                     <div className="flex items-center bg-white rounded-2xl border border-gray-100 shadow-sm p-1">
+                         <button
+                             onClick={() => setViewMode('grid')}
+                             className={`p-2 rounded-xl transition-colors ${viewMode === 'grid' ? 'bg-[#33cbcc] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                         >
+                             <LayoutGrid size={16} />
+                         </button>
+                         <button
+                             onClick={() => setViewMode('list')}
+                             className={`p-2 rounded-xl transition-colors ${viewMode === 'list' ? 'bg-[#33cbcc] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                         >
+                             <List size={16} />
+                         </button>
+                     </div>
                      <div className="relative">
                          <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                          <select
@@ -920,33 +953,61 @@ const Employees = () => {
                 </div>
             )}
 
-            {/* Employee Grid */}
-            {isLoading && (
-                <div className="flex items-center justify-center py-20">
-                    <Loader2 size={32} className="animate-spin text-[#33cbcc]" />
+            {/* Employee Grid / List */}
+            {isLoading && <EmployeesSkeleton />}
+
+            {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {employees.map((employee, index) => (
+                        <motion.div
+                            key={employee.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            onClick={() => navigate(`/employees/${employee.id}`)}
+                            className="bg-white rounded-3xl p-8 transition-all duration-300 border border-gray-100 group relative overflow-hidden cursor-pointer hover:border-[#33cbcc]/30"
+                        >
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-100 mb-4">
+                                    <img src={employee.avatar} alt={employee.name} className="w-full h-full object-cover" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
+                                <p className="text-gray-400 text-sm mt-1">{employee.role}</p>
+                            </div>
+                        </motion.div>
+                    ))}
                 </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {employees.map((employee, index) => (
-                    <motion.div
-                        key={employee.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        onClick={() => navigate(`/employees/${employee.id}`)}
-                        className="bg-white rounded-3xl p-8 transition-all duration-300 border border-gray-100 group relative overflow-hidden cursor-pointer hover:border-[#33cbcc]/30"
-                    >
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-100 mb-4">
+            ) : (
+                <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
+                    {employees.map((employee, index) => (
+                        <motion.div
+                            key={employee.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.04 }}
+                            onClick={() => navigate(`/employees/${employee.id}`)}
+                            className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 cursor-pointer transition-colors group"
+                        >
+                            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-100 shrink-0">
                                 <img src={employee.avatar} alt={employee.name} className="w-full h-full object-cover" />
                             </div>
-
-                            <h3 className="text-xl font-bold text-gray-800">{employee.name}</h3>
-                            <p className="text-gray-400 text-sm mt-1">{employee.role}</p>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">{employee.name}</p>
+                                <p className="text-xs text-gray-400">{employee.role}</p>
+                            </div>
+                            {employee.departmentName && (
+                                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 shrink-0">
+                                    {employee.departmentName}
+                                </span>
+                            )}
+                            <ArrowUpRight size={16} className="text-gray-300 group-hover:text-[#33cbcc] transition-colors shrink-0" />
+                        </motion.div>
+                    ))}
+                    {employees.length === 0 && !isLoading && (
+                        <div className="py-12 text-center text-gray-400 text-sm">{t('employees.searchPlaceholder')}</div>
+                    )}
+                </div>
+            )}
 
             {/* Modals */}
             <AnimatePresence>
@@ -955,6 +1016,9 @@ const Employees = () => {
                 )}
                 {showManagerModal && (
                     <CreateEmployeeModal onClose={() => setShowManagerModal(false)} managerMode />
+                )}
+                {showAccountantModal && (
+                    <CreateEmployeeModal onClose={() => setShowAccountantModal(false)} accountantMode />
                 )}
             </AnimatePresence>
         </div>

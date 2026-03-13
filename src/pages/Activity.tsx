@@ -15,9 +15,11 @@ import {
     Users,
     Zap,
     CalendarDays,
-    Loader2,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
-import { useLogs } from '../api/logs/hooks';
+import { useLogs, useLogsStats } from '../api/logs/hooks';
+import { ActivitySkeleton } from '../components/Skeleton';
 import type { Log } from '../api/logs/types';
 import {
     AreaChart,
@@ -101,79 +103,62 @@ const ActivityPage = () => {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterAction, setFilterAction] = useState<ActionType | 'all'>('all');
-    const [filterUser, setFilterUser] = useState<string>('all');
     const [filterRole, setFilterRole] = useState<UserRole | 'all'>('all');
+    const [page, setPage] = useState(1);
 
-    // API data
-    const { data: apiLogs, isLoading } = useLogs();
+    // API data — paginated list
+    const backendAction = filterAction !== 'all' ? filterAction.toUpperCase() : undefined;
+    const { data: logsPage, isLoading } = useLogs(page, backendAction);
+
+    // Stats / chart — separate lightweight endpoint
+    const { data: statsData } = useLogsStats();
 
     // Map API logs to display shape
-    const activities: ActivityItem[] = (apiLogs || []).map((log: Log, i: number) => {
+    const activities: ActivityItem[] = (logsPage?.data || []).map((log: Log, i: number) => {
         const d = (log.details || {}) as Record<string, string>;
         return {
-        id: i + 1,
-        user: {
-            name: log.user?.employee
-                ? `${log.user.employee.firstName} ${log.user.employee.lastName}`
-                : log.user?.email || d.userEmail || 'Unknown',
-            avatar: log.user?.employee?.avatarUrl || '',
-            role: (log.user?.role || d.userRole || 'EMPLOYEE') as UserRole,
-        },
-        action: ACTION_TYPE_MAP[log.action?.toUpperCase()] || 'view',
-        target: d.target || '',
-        timestamp: log.timestamp,
-    };
+            id: i + 1,
+            user: {
+                name: log.user?.employee
+                    ? `${log.user.employee.firstName} ${log.user.employee.lastName}`
+                    : log.user?.email || d.userEmail || 'Unknown',
+                avatar: log.user?.employee?.avatarUrl || '',
+                role: (log.user?.role || d.userRole || 'EMPLOYEE') as UserRole,
+            },
+            action: ACTION_TYPE_MAP[log.action?.toUpperCase()] || 'view',
+            target: d.target || '',
+            timestamp: log.timestamp,
+        };
     });
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
-    }
+    const totalPages = logsPage?.totalPages ?? 1;
 
-    /* Filtered activities */
+    // Client-side filters on current page (search + role)
     const filteredActivities = activities.filter(item => {
         const matchesSearch =
             item.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.target.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesAction = filterAction === 'all' || item.action === filterAction;
-        const matchesUser = filterUser === 'all' || item.user.name === filterUser;
         const matchesRole = filterRole === 'all' || item.user.role === filterRole;
-        return matchesSearch && matchesAction && matchesUser && matchesRole;
+        return matchesSearch && matchesRole;
     });
 
-    /* Stats */
-    const today = new Date().toISOString().split('T')[0];
-    const todayCount = activities.filter(a => a.timestamp?.startsWith(today)).length;
-    const activeUsersCount = new Set(activities.map(a => a.user.name)).size;
-
-    const actionCounts = ACTION_TYPES.map(a => ({
-        action: a,
-        count: activities.filter(item => item.action === a).length,
-    }));
-    const topAction = actionCounts.length > 0
-        ? actionCounts.reduce((max, cur) => cur.count > max.count ? cur : max, actionCounts[0])
-        : { action: 'view' as ActionType, count: 0 };
+    // Stats from dedicated endpoint
+    const topActionKey = statsData?.topAction
+        ? ACTION_TYPE_MAP[statsData.topAction.toUpperCase()] || 'view'
+        : 'view';
 
     const stats = [
-        { label: t('activity.stats.total'), value: activities.length, icon: ActivityIcon, color: '#33cbcc' },
-        { label: t('activity.stats.today'), value: todayCount, icon: CalendarDays, color: '#3b82f6' },
-        { label: t('activity.stats.activeUsers'), value: activeUsersCount, icon: Users, color: '#8b5cf6' },
-        { label: t('activity.stats.topAction'), value: t(`activity.actions.${topAction.action}`), icon: Zap, color: '#f59e0b' },
+        { label: t('activity.stats.total'), value: statsData?.total ?? '—', icon: ActivityIcon, color: '#33cbcc' },
+        { label: t('activity.stats.today'), value: statsData?.todayCount ?? '—', icon: CalendarDays, color: '#3b82f6' },
+        { label: t('activity.stats.activeUsers'), value: statsData?.activeUsers ?? '—', icon: Users, color: '#8b5cf6' },
+        { label: t('activity.stats.topAction'), value: statsData?.topAction ? t(`activity.actions.${topActionKey}`) : '—', icon: Zap, color: '#f59e0b' },
     ];
 
-    /* Chart data — daily activity counts for last 7 days */
-    const chartData = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (6 - i));
-        const dayStr = d.toISOString().split('T')[0];
-        return {
-            day: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
-            count: activities.filter(a => a.timestamp?.startsWith(dayStr)).length,
-        };
-    });
+    // Chart data from dedicated endpoint
+    const chartData = (statsData?.chartData || []).map(d => ({
+        day: new Date(d.day).toLocaleDateString('fr-FR', { weekday: 'short' }),
+        count: d.count,
+    }));
 
     const selectCls = 'bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all appearance-none cursor-pointer';
 
@@ -250,10 +235,10 @@ const ActivityPage = () => {
                     />
                 </div>
 
-                {/* Action filter */}
+                {/* Action filter — sent to backend */}
                 <select
                     value={filterAction}
-                    onChange={e => setFilterAction(e.target.value as ActionType | 'all')}
+                    onChange={e => { setFilterAction(e.target.value as ActionType | 'all'); setPage(1); }}
                     className={selectCls}
                 >
                     <option value="all">{t('activity.filters.allActions')}</option>
@@ -262,19 +247,7 @@ const ActivityPage = () => {
                     ))}
                 </select>
 
-                {/* User filter */}
-                <select
-                    value={filterUser}
-                    onChange={e => setFilterUser(e.target.value)}
-                    className={selectCls}
-                >
-                    <option value="all">{t('activity.filters.allUsers')}</option>
-                    {Array.from(new Set(activities.map(a => a.user.name))).filter(Boolean).map(name => (
-                        <option key={name} value={name}>{name}</option>
-                    ))}
-                </select>
-
-                {/* Role filter */}
+                {/* Role filter — client-side on current page */}
                 <select
                     value={filterRole}
                     onChange={e => setFilterRole(e.target.value as UserRole | 'all')}
@@ -288,7 +261,9 @@ const ActivityPage = () => {
             </div>
 
             {/* ── Activity Log ── */}
-            {filteredActivities.length > 0 && (
+            {isLoading ? (
+                <ActivitySkeleton />
+            ) : filteredActivities.length > 0 ? (
                 <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
                     {filteredActivities.map((item, i) => {
                         const ActionIcon = ACTION_ICONS[item.action];
@@ -352,13 +327,37 @@ const ActivityPage = () => {
                         );
                     })}
                 </div>
-            )}
-
-            {/* ── Empty State ── */}
-            {filteredActivities.length === 0 && (
+            ) : (
                 <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
                     <ActivityIcon size={48} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-400 font-medium">{t('activity.noResults')}</p>
+                </div>
+            )}
+
+            {/* ── Pagination ── */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <ChevronLeft size={16} />
+                        {t('common.previous')}
+                    </button>
+
+                    <span className="text-sm text-gray-500">
+                        {page} / {totalPages}
+                    </span>
+
+                    <button
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {t('common.next')}
+                        <ChevronRight size={16} />
+                    </button>
                 </div>
             )}
         </div>

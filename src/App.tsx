@@ -35,8 +35,8 @@ function App() {
         </PublicRoute>
       } />
 
-      {/* Admin routes for MANAGER and HEAD_OF_DEPARTMENT */}
-      <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'HEAD_OF_DEPARTMENT']} />}>
+      {/* Admin routes for MANAGER, HEAD_OF_DEPARTMENT and ACCOUNTANT */}
+      <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'HEAD_OF_DEPARTMENT', 'ACCOUNTANT']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/employees" element={<Employees />} />

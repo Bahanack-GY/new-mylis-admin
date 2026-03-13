@@ -7,8 +7,17 @@ export interface Expense {
     frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null;
     date: string;
     demandId: string | null;
+    projectId: string | null;
+    project?: { id: string; name: string } | null;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface PaginatedExpenses {
+    data: Expense[];
+    total: number;
+    page: number;
+    totalPages: number;
 }
 
 export interface CreateExpenseDto {
@@ -18,6 +27,7 @@ export interface CreateExpenseDto {
     type: 'ONE_TIME' | 'RECURRENT';
     frequency?: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null;
     date: string;
+    projectId?: string | null;
 }
 
 export interface ExpenseStats {

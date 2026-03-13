@@ -14,13 +14,15 @@ export const documentsApi = {
     getStorageInfo: () =>
         api.get<{ totalBytes: number; fileCount: number }>('/hr/documents/storage').then(r => r.data),
 
+    deleteDocument: (id: string) =>
+        api.delete(`/hr/documents/${id}`).then(r => r.data),
+
     uploadFile: (file: File, folder: string) => {
         const formData = new FormData();
         formData.append('file', file);
         return api.post<UploadFileResponse>(
             `/hr/documents/upload/${folder}`,
             formData,
-            { headers: { 'Content-Type': 'multipart/form-data' } },
         ).then(r => r.data);
     },
 };

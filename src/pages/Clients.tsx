@@ -20,6 +20,7 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { useClients, useCreateClient, useUpdateClient, useDeleteClient } from '../api/clients/hooks';
+import { ClientsSkeleton } from '../components/Skeleton';
 import { useInvoices } from '../api/invoices/hooks';
 import { useDepartments } from '../api/departments/hooks';
 import { useAuth, useDepartmentScope } from '../contexts/AuthContext';
@@ -287,11 +288,7 @@ const Clients = () => {
     }, [invoices]);
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <ClientsSkeleton />;
     }
 
     /* Filters */
@@ -579,7 +576,7 @@ const Clients = () => {
                                         {client.type === 'subscription' ? t('clients.typeSubscription') : t('clients.typeOneTime')}
                                     </span>
                                     {client.price && (
-                                        <span className="text-xs text-gray-500 font-medium">{client.price} DA</span>
+                                        <span className="text-xs text-gray-500 font-medium">{client.price} FCFA</span>
                                     )}
                                 </div>
 

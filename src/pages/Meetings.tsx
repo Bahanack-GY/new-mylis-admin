@@ -29,6 +29,7 @@ import {
     Check,
 } from 'lucide-react';
 import { useMeetings, useCreateMeeting, useDeleteMeeting } from '../api/meetings/hooks';
+import { MeetingsAdminSkeleton } from '../components/Skeleton';
 import { useDepartments } from '../api/departments/hooks';
 import { useEmployees } from '../api/employees/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
@@ -719,11 +720,7 @@ const Meetings = () => {
     }, [meetings]);
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <MeetingsAdminSkeleton />;
     }
 
     /* Filtered meetings */

@@ -4,11 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft, ChevronRight, Flag, Search, X,
     ArrowLeft, Clock, Plus, CalendarDays,
-    AlignLeft, Briefcase, BarChart3, RefreshCw, Loader2, Zap
+    AlignLeft, Briefcase, BarChart3, RefreshCw, Loader2, Zap,
+    Pencil, Trash2, History, Save, CalendarRange, Columns3,
 } from 'lucide-react';
-import { useTasks, useCreateTask, useUpdateTask } from '../api/tasks/hooks';
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useTaskHistory } from '../api/tasks/hooks';
+import { TasksAdminSkeleton } from '../components/Skeleton';
 import { useEmployees } from '../api/employees/hooks';
 import { useProjects } from '../api/projects/hooks';
+import { useDepartments } from '../api/departments/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 
 /* ─── Types ───────────────────────────────────────────────── */
@@ -39,6 +42,8 @@ interface EmployeeRow {
     name: string;
     role: string;
     avatar: string;
+    departmentId: string;
+    departmentName: string;
     tasks: GanttTask[];
     laneCount?: number;
 }
@@ -121,7 +126,7 @@ const assignLanes = (tasks: GanttTask[]): GanttTask[] => {
 
 /* ─── Task Detail Modal ───────────────────────────────────── */
 
-const TaskDetailModal = ({ task, employee, onClose }: { task: GanttTask; employee: EmployeeRow; onClose: () => void }) => {
+const TaskDetailModal = ({ task, employee, onClose, onEdit, onDelete, onHistory }: { task: GanttTask; employee: EmployeeRow; onClose: () => void; onEdit?: () => void; onDelete?: () => void; onHistory?: () => void }) => {
     const { t } = useTranslation();
     const c = TASK_COLORS[task.color];
     const duration = diffDays(task.startDate, task.endDate) + 1;
@@ -214,6 +219,189 @@ const TaskDetailModal = ({ task, employee, onClose }: { task: GanttTask; employe
                         <div>
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{t('tasksPage.description')}</p>
                             <p className="text-sm text-gray-600 leading-relaxed">{task.description}</p>
+                        </div>
+                    )}
+
+                    {/* Action buttons */}
+                    {(onEdit || onDelete || onHistory) && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                            {!task.selfAssigned && onEdit && (
+                                <button
+                                    onClick={() => { onClose(); onEdit(); }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[#33cbcc]/10 text-[#33cbcc] hover:bg-[#33cbcc]/20 transition-colors"
+                                >
+                                    <Pencil size={12} /> {t('tasksPage.editTask')}
+                                </button>
+                            )}
+                            {!task.selfAssigned && onDelete && (
+                                <button
+                                    onClick={() => { if (window.confirm(t('tasksPage.confirmDelete'))) { onClose(); onDelete(); } }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                                >
+                                    <Trash2 size={12} /> {t('tasksPage.deleteTask')}
+                                </button>
+                            )}
+                            {onHistory && (
+                                <button
+                                    onClick={() => { onClose(); onHistory(); }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[#283852]/10 text-[#283852] hover:bg-[#283852]/20 transition-colors"
+                                >
+                                    <History size={12} /> {t('tasksPage.viewHistory')}
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+/* ─── Edit Gantt Task Modal ─────────────────────────────── */
+
+const EditGanttTaskModal = ({
+    task,
+    onClose,
+    onSave,
+    isSaving,
+}: {
+    task: GanttTask;
+    onClose: () => void;
+    onSave: (dto: { title?: string; description?: string; difficulty?: string; startDate?: string; endDate?: string }) => void;
+    isSaving: boolean;
+}) => {
+    const { t } = useTranslation();
+    const fmtD = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+    const [form, setForm] = useState({
+        title: task.title,
+        description: task.description || '',
+        difficulty: task.difficulty || 'MEDIUM',
+        startDate: fmtD(task.startDate),
+        endDate: fmtD(task.endDate),
+    });
+    const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
+    const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block';
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#33cbcc]/10 flex items-center justify-center">
+                            <Pencil size={18} className="text-[#33cbcc]" />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">{t('tasksPage.editTask')}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><X size={18} /></button>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                    <div>
+                        <label className={labelCls}>{t('tasksPage.titlePlaceholder')}</label>
+                        <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>{t('tasksPage.descriptionPlaceholder')}</label>
+                        <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} className={`${inputCls} resize-none`} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>{t('tasksPage.difficulty')}</label>
+                        <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value }))} className={inputCls}>
+                            <option value="EASY">{t('tasksPage.difficultyEasy')}</option>
+                            <option value="MEDIUM">{t('tasksPage.difficultyMedium')}</option>
+                            <option value="HARD">{t('tasksPage.difficultyHard')}</option>
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelCls}>{t('tasksPage.startDate')}</label>
+                            <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>{t('tasksPage.endDate')}</label>
+                            <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className={inputCls} />
+                        </div>
+                    </div>
+                </div>
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">{t('tasksPage.cancel')}</button>
+                    <button
+                        onClick={() => onSave({ title: form.title, description: form.description, difficulty: form.difficulty, startDate: form.startDate || undefined, endDate: form.endDate || undefined })}
+                        disabled={!form.title.trim() || isSaving}
+                        className="px-5 py-2 bg-[#33cbcc] text-white rounded-xl text-sm font-medium hover:bg-[#2bb5b6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        {t('tasksPage.save')}
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+/* ─── Gantt History Modal ─────────────────────────────────── */
+
+const GanttHistoryModal = ({ taskId, onClose }: { taskId: string; onClose: () => void }) => {
+    const { t } = useTranslation();
+    const { data: history = [], isLoading } = useTaskHistory(taskId);
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#283852]/10 flex items-center justify-center">
+                            <History size={18} className="text-[#283852]" />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">{t('tasksPage.historyTitle')}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><X size={18} /></button>
+                </div>
+                <div className="px-6 py-5 max-h-[60vh] overflow-y-auto">
+                    {isLoading ? (
+                        <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#33cbcc]" /></div>
+                    ) : (history as any[]).length === 0 ? (
+                        <p className="text-center text-sm text-gray-400 py-8">{t('tasksPage.historyEmpty')}</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {(history as any[]).map((entry: any) => (
+                                <div key={entry.id} className="bg-gray-50 rounded-xl p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-[#283852]">{entry.changedByName}</span>
+                                        <span className="text-[11px] text-gray-400">{new Date(entry.createdAt).toLocaleString()}</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {Object.entries(entry.changes).map(([field, change]: [string, any]) => (
+                                            <div key={field} className="text-[11px] text-gray-600">
+                                                <span className="font-medium text-gray-700 capitalize">{field}:</span>{' '}
+                                                <span className="line-through text-gray-400">{String(change.from ?? '—')}</span>
+                                                {' → '}
+                                                <span className="text-[#33cbcc] font-medium">{String(change.to ?? '—')}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -556,18 +744,27 @@ const AddTaskModal = ({
 const Tasks = () => {
     const { t } = useTranslation();
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [pageView, setPageView] = useState<'calendar' | 'board'>('calendar');
     const [viewMode, setViewMode] = useState<ViewMode>('week');
+    const [boardFilterEmployee, setBoardFilterEmployee] = useState('');
+    const [boardFilterDepartment, setBoardFilterDepartment] = useState('');
+    const [boardCurrentDate, setBoardCurrentDate] = useState(() => new Date());
+    const [boardViewMode, setBoardViewMode] = useState<'week' | 'month'>('week');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
     const [modalData, setModalData] = useState<{ task: GanttTask; employee: EmployeeRow } | null>(null);
     const [addTaskData, setAddTaskData] = useState<{ employee?: EmployeeRow; date: Date } | null>(null);
+    const [editingGanttTask, setEditingGanttTask] = useState<{ task: GanttTask; emp: EmployeeRow } | null>(null);
+    const [historyTaskId, setHistoryTaskId] = useState<string | null>(null);
 
     // API data
     const deptScope = useDepartmentScope();
     const { data: apiTasks, isLoading: loadingTasks } = useTasks(deptScope);
     const { data: apiEmployees, isLoading: loadingEmployees } = useEmployees(deptScope);
+    const { data: apiDepartments } = useDepartments();
     const createTaskMutation = useCreateTask();
     const updateTaskMutation = useUpdateTask();
+    const deleteTaskMutation = useDeleteTask();
 
     // Map API data to display shapes — no mock fallback
     const TASK_COLOR_MAP: Record<string, ColorKey> = {
@@ -607,6 +804,8 @@ const Tasks = () => {
             name: `${emp.firstName} ${emp.lastName}`,
             role: emp.position?.title || '',
             avatar: emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.firstName + '+' + emp.lastName)}`,
+            departmentId: emp.departmentId || '',
+            departmentName: emp.department?.name || '',
             tasks: tasksWithLanes,
             laneCount,
         } as EmployeeRow;
@@ -627,6 +826,17 @@ const Tasks = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const wasDragging = useRef(false);
     const dayPxRef = useRef(0);
+    const [timelineWidth, setTimelineWidth] = useState(0);
+
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(entries => {
+            setTimelineWidth(entries[0]?.contentRect.width ?? 0);
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -635,7 +845,9 @@ const Tasks = () => {
 
     let viewStart: Date;
     let viewDays: number;
-    const dayPx = DAY_PX[viewMode];
+    const dayPx = viewMode === 'week' && timelineWidth > 0
+        ? Math.floor(timelineWidth / 7)
+        : DAY_PX[viewMode];
     dayPxRef.current = dayPx;
 
     if (viewMode === 'day') {
@@ -725,6 +937,35 @@ const Tasks = () => {
             return currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
         return `${currentDate.getFullYear()}`;
     })();
+
+    /* ── Board date range ── */
+
+    const boardViewStart = boardViewMode === 'week'
+        ? startOfWeek(boardCurrentDate)
+        : new Date(boardCurrentDate.getFullYear(), boardCurrentDate.getMonth(), 1);
+
+    const boardViewDays = boardViewMode === 'week'
+        ? 7
+        : numDaysInMonth(boardCurrentDate.getFullYear(), boardCurrentDate.getMonth());
+
+    const boardViewEnd = addDays(boardViewStart, boardViewDays - 1);
+
+    const boardNavLabel = boardViewMode === 'week'
+        ? (() => {
+            const we = addDays(boardViewStart, 6);
+            const o: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+            if (boardViewStart.getMonth() !== we.getMonth())
+                return `${boardViewStart.toLocaleDateString(undefined, o)} – ${we.toLocaleDateString(undefined, { ...o, year: 'numeric' })}`;
+            return `${boardViewStart.toLocaleDateString(undefined, o)} – ${we.getDate()}, ${we.getFullYear()}`;
+        })()
+        : boardCurrentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    const boardNav = (dir: number) => {
+        const d = new Date(boardCurrentDate);
+        if (boardViewMode === 'week') d.setDate(d.getDate() + dir * 7);
+        else d.setMonth(d.getMonth() + dir);
+        setBoardCurrentDate(d);
+    };
 
     /* ── Task bar position ── */
 
@@ -870,11 +1111,7 @@ const Tasks = () => {
     /* ════════════════════════ JSX ════════════════════════ */
 
     if (loadingTasks || loadingEmployees) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <TasksAdminSkeleton />;
     }
 
     return (
@@ -887,6 +1124,23 @@ const Tasks = () => {
                     <p className="text-sm text-gray-400 mt-1">{t('tasksPage.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Calendar / Board toggle */}
+                    <div className="flex bg-gray-100 rounded-xl p-1">
+                        <button
+                            onClick={() => setPageView('calendar')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${pageView === 'calendar' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <CalendarRange size={14} />
+                            {t('tasksPage.calendarView')}
+                        </button>
+                        <button
+                            onClick={() => setPageView('board')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${pageView === 'board' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <Columns3 size={14} />
+                            {t('tasksPage.boardView')}
+                        </button>
+                    </div>
                     <button
                         onClick={() => setAddTaskData({ date: new Date() })}
                         className="flex items-center gap-2 bg-[#33cbcc] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#2bb5b6] transition-colors shadow-sm shadow-[#33cbcc]/20"
@@ -912,6 +1166,215 @@ const Tasks = () => {
                 </div>
             </div>
 
+            {/* ═══ Board view ═══ */}
+            {pageView === 'board' && (() => {
+                const selectCls = 'bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all appearance-none cursor-pointer';
+
+                const allTasks = employees.flatMap(emp => {
+                    if (boardFilterDepartment && emp.departmentId !== boardFilterDepartment) return [];
+                    if (boardFilterEmployee && emp.apiId !== boardFilterEmployee) return [];
+                    return emp.tasks
+                        .filter(t => {
+                            // date range overlap: task overlaps [boardViewStart, boardViewEnd]
+                            const ts = new Date(t.startDate); ts.setHours(0, 0, 0, 0);
+                            const te = new Date(t.endDate);   te.setHours(23, 59, 59, 999);
+                            if (ts > boardViewEnd || te < boardViewStart) return false;
+                            // text search
+                            if (searchQuery && !t.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                                !emp.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                            return true;
+                        })
+                        .map(t => ({ ...t, employee: emp }));
+                });
+
+                const BOARD_COLS = [
+                    { key: 'todo',        label: t('tasksPage.todo'),       dot: '#9ca3af' },
+                    { key: 'in_progress', label: t('tasksPage.inProgress'), dot: '#f59e0b' },
+                    { key: 'done',        label: t('tasksPage.done'),        dot: '#22c55e' },
+                ] as const;
+
+                const diffLabel: Record<ColorKey, string> = {
+                    teal:  t('tasksPage.difficultyEasy'),
+                    blue:  t('tasksPage.difficultyMedium'),
+                    amber: t('tasksPage.difficultyHard'),
+                    rose:  t('tasksPage.difficultyHard'),
+                };
+
+                return (
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+                        {/* Date navigation */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                {/* Week / Month toggle */}
+                                <div className="flex bg-gray-100 rounded-xl p-1">
+                                    {(['week', 'month'] as const).map(v => (
+                                        <button
+                                            key={v}
+                                            onClick={() => setBoardViewMode(v)}
+                                            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${boardViewMode === v ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        >
+                                            {t(`tasksPage.view_${v}`)}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Prev / label / Next */}
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => boardNav(-1)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
+                                        <ChevronLeft size={18} />
+                                    </button>
+                                    <span className="text-sm font-bold text-gray-800 min-w-42 text-center select-none capitalize">{boardNavLabel}</span>
+                                    <button onClick={() => boardNav(1)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 transition-colors">
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
+
+                                {/* Today */}
+                                <button
+                                    onClick={() => setBoardCurrentDate(new Date())}
+                                    className="text-xs font-semibold text-[#33cbcc] px-3 py-1.5 rounded-lg hover:bg-[#33cbcc]/10 transition-colors border border-[#33cbcc]/30"
+                                >
+                                    {t('tasksPage.today')}
+                                </button>
+                            </div>
+
+                            <span className="text-xs text-gray-400">
+                                {allTasks.length} {allTasks.length === 1 ? t('tasksPage.taskNumber') : t('tasksPage.taskNumber') + 's'}
+                            </span>
+                        </div>
+
+                        {/* Employee / Department filters */}
+                        <div className="flex flex-wrap gap-3">
+                            <select
+                                value={boardFilterDepartment}
+                                onChange={e => { setBoardFilterDepartment(e.target.value); setBoardFilterEmployee(''); }}
+                                className={selectCls}
+                            >
+                                <option value="">{t('tasksPage.allDepartments')}</option>
+                                {(apiDepartments || []).map(d => (
+                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                            </select>
+
+                            <select
+                                value={boardFilterEmployee}
+                                onChange={e => setBoardFilterEmployee(e.target.value)}
+                                className={selectCls}
+                            >
+                                <option value="">{t('tasksPage.allEmployees')}</option>
+                                {employees
+                                    .filter(e => !boardFilterDepartment || e.departmentId === boardFilterDepartment)
+                                    .map(e => (
+                                        <option key={e.apiId} value={e.apiId}>{e.name}</option>
+                                    ))}
+                            </select>
+
+                            {(boardFilterDepartment || boardFilterEmployee) && (
+                                <button
+                                    onClick={() => { setBoardFilterDepartment(''); setBoardFilterEmployee(''); }}
+                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors"
+                                >
+                                    <X size={14} />
+                                    {t('tasksPage.showAll')}
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Columns */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            {BOARD_COLS.map(col => {
+                                const colTasks = allTasks.filter(t => t.status === col.key);
+                                return (
+                                    <div key={col.key} className="flex flex-col gap-3">
+                                        {/* Column header */}
+                                        <div className="flex items-center justify-between px-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.dot }} />
+                                                <span className="text-sm font-bold text-gray-700">{col.label}</span>
+                                            </div>
+                                            <span className="text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">
+                                                {colTasks.length}
+                                            </span>
+                                        </div>
+
+                                        {/* Cards */}
+                                        <div className="flex flex-col gap-3 min-h-40">
+                                            {colTasks.map(task => {
+                                                const c = TASK_COLORS[task.color];
+                                                return (
+                                                    <motion.div
+                                                        key={task.id}
+                                                        initial={{ opacity: 0, y: 6 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        onClick={() => setModalData({ task, employee: task.employee })}
+                                                        className="bg-white rounded-2xl border border-gray-100 p-4 cursor-pointer hover:border-[#33cbcc]/30 hover:shadow-sm transition-all"
+                                                        style={{ borderLeft: `3px solid ${c.border}` }}
+                                                    >
+                                                        {/* Title + flag */}
+                                                        <div className="flex items-start justify-between gap-2 mb-3">
+                                                            <p className="text-sm font-semibold text-gray-800 leading-snug">{task.title}</p>
+                                                            {task.hasFlag && <Flag size={13} className="shrink-0 mt-0.5 text-rose-400" />}
+                                                        </div>
+
+                                                        {/* Project */}
+                                                        {task.subtitle && (
+                                                            <div className="flex items-center gap-1.5 mb-2">
+                                                                <Briefcase size={11} className="text-gray-400 shrink-0" />
+                                                                <span className="text-[11px] text-gray-400 truncate">{task.subtitle}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Date range */}
+                                                        <div className="flex items-center gap-1.5 mb-3">
+                                                            <CalendarDays size={11} className="text-gray-400 shrink-0" />
+                                                            <span className="text-[11px] text-gray-400">
+                                                                {task.startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                {' – '}
+                                                                {task.endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Footer: employee + difficulty */}
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <img
+                                                                    src={task.employee.avatar}
+                                                                    alt={task.employee.name}
+                                                                    className="w-6 h-6 rounded-full border border-gray-200 shrink-0 object-cover"
+                                                                />
+                                                                <div className="min-w-0">
+                                                                    <p className="text-[11px] text-gray-600 font-medium truncate">{task.employee.name}</p>
+                                                                    {task.employee.departmentName && (
+                                                                        <p className="text-[10px] text-gray-400 truncate">{task.employee.departmentName}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <span
+                                                                className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                                                style={{ backgroundColor: c.bg, color: c.text }}
+                                                            >
+                                                                {diffLabel[task.color]}
+                                                            </span>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+
+                                            {colTasks.length === 0 && (
+                                                <div className="flex-1 rounded-2xl border-2 border-dashed border-gray-100 flex items-center justify-center py-10">
+                                                    <p className="text-xs text-gray-300">—</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                );
+            })()}
+
+            {pageView === 'calendar' && <>
             {/* ═══ Toolbar: view toggle + nav ═══ */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -1242,6 +1705,7 @@ const Tasks = () => {
                     </div>
                 </div>
             </motion.div>
+            </>}
 
             {/* ═══ Task detail modal ═══ */}
             <AnimatePresence>
@@ -1250,6 +1714,40 @@ const Tasks = () => {
                         task={modalData.task}
                         employee={modalData.employee}
                         onClose={() => setModalData(null)}
+                        onEdit={modalData.task.apiId ? () => setEditingGanttTask({ task: modalData!.task, emp: modalData!.employee }) : undefined}
+                        onDelete={modalData.task.apiId ? () => {
+                            deleteTaskMutation.mutate(modalData!.task.apiId!);
+                            setModalData(null);
+                        } : undefined}
+                        onHistory={modalData.task.apiId ? () => setHistoryTaskId(modalData!.task.apiId!) : undefined}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ═══ Edit Gantt Task modal ═══ */}
+            <AnimatePresence>
+                {editingGanttTask && (
+                    <EditGanttTaskModal
+                        task={editingGanttTask.task}
+                        onClose={() => setEditingGanttTask(null)}
+                        isSaving={updateTaskMutation.isPending}
+                        onSave={(dto) => {
+                            if (!editingGanttTask.task.apiId) return;
+                            updateTaskMutation.mutate(
+                                { id: editingGanttTask.task.apiId, dto: dto as any },
+                                { onSuccess: () => setEditingGanttTask(null) }
+                            );
+                        }}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* ═══ History modal ═══ */}
+            <AnimatePresence>
+                {historyTaskId && (
+                    <GanttHistoryModal
+                        taskId={historyTaskId}
+                        onClose={() => setHistoryTaskId(null)}
                     />
                 )}
             </AnimatePresence>

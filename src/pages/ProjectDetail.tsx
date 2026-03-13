@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import {
     TrendingUp,
     CheckCircle,
@@ -14,7 +15,10 @@ import {
     CircleDot,
     Circle,
     Users,
-    Pencil
+    Pencil,
+    Plus,
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import {
     XAxis,
@@ -30,6 +34,8 @@ import {
 } from 'recharts';
 import type { ProjectTab } from '../components/ProjectDetailSidebar';
 import type { ProjectData } from '../layouts/ProjectDetailLayout';
+import { useProjectExpenses, useCreateExpense, useDeleteExpense } from '../api/expenses/hooks';
+import type { CreateExpenseDto } from '../api/expenses/types';
 
 interface ProjectDetailProps {
     project: ProjectData;
@@ -410,45 +416,68 @@ const TasksView = ({ project }: { project: ProjectData }) => {
    BUDGET TAB
    ═══════════════════════════════════════════════════════════ */
 
+const EXPENSE_CATEGORIES = ['Loyer', 'Salaire', 'Facture', 'Fourniture', 'Licence/Logiciel', 'Demande', 'Autre'];
+
+const emptyExpenseForm = (): CreateExpenseDto => ({
+    title: '',
+    amount: 0,
+    category: EXPENSE_CATEGORIES[0],
+    type: 'ONE_TIME',
+    frequency: null,
+    date: new Date().toISOString().split('T')[0],
+});
+
 const BudgetView = ({ project }: { project: ProjectData }) => {
     const { t } = useTranslation();
+    const { data: expenses = [], isLoading: expensesLoading } = useProjectExpenses(project.id);
+    const createExpense = useCreateExpense();
+    const deleteExpense = useDeleteExpense();
 
-    const cost = project.budget;
+    const [showForm, setShowForm] = useState(false);
+    const [form, setForm] = useState<CreateExpenseDto>(emptyExpenseForm());
+
+    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0);
     const revenue = project.revenue;
-    const profit = revenue - cost;
-    const spent = Math.round(cost * (project.progress / 100));
-    const remaining = cost - spent;
+    const profit = revenue - totalExpenses;
 
-    const budgetStats = [
-        { label: t('projects.formCost'), value: cost > 0 ? fmtCurrency(cost) : '—', color: '#8b5cf6', icon: Wallet },
+    const summaryStats = [
         { label: t('projects.formRevenue'), value: revenue > 0 ? fmtCurrency(revenue) : '—', color: '#33cbcc', icon: TrendingUp },
-        { label: t('projectDetail.budget.profit'), value: (cost > 0 || revenue > 0) ? fmtCurrency(profit) : '—', color: profit >= 0 ? '#22c55e' : '#f43f5e', icon: TrendingUp },
-        { label: t('projectDetail.budget.remaining'), value: cost > 0 ? fmtCurrency(remaining) : '—', color: '#3b82f6', icon: Wallet },
+        { label: t('projectDetail.budget.expenses'), value: totalExpenses > 0 ? fmtCurrency(totalExpenses) : '—', color: '#f43f5e', icon: Wallet },
+        { label: t('projectDetail.budget.profit'), value: (revenue > 0 || totalExpenses > 0) ? fmtCurrency(profit) : '—', color: profit >= 0 ? '#22c55e' : '#f43f5e', icon: TrendingUp },
     ];
 
     const donutData = [
-        { name: t('projectDetail.budget.expenses'), value: spent },
-        { name: t('projectDetail.budget.remaining'), value: Math.max(0, remaining) },
+        { name: t('projectDetail.budget.expenses'), value: totalExpenses },
+        { name: t('projects.formRevenue'), value: Math.max(0, revenue - totalExpenses) },
     ];
     const PIE_COLORS = ['#f43f5e', '#33cbcc'];
 
-    // Per-difficulty cost allocation
-    const DIFF_WEIGHTS: Record<string, number> = { EASY: 1, MEDIUM: 2, HARD: 4 };
-    const totalWeight = project.tasks.reduce((s, tk) => s + (DIFF_WEIGHTS[tk.difficulty || 'MEDIUM'] || 2), 0) || 1;
-    const costPerWeight = cost / totalWeight;
-    const diffBreakdown = ['EASY', 'MEDIUM', 'HARD'].map(d => ({
-        name: d,
-        amount: Math.round(project.tasks.filter(tk => (tk.difficulty || 'MEDIUM') === d).reduce((s) => s + (DIFF_WEIGHTS[d] || 2) * costPerWeight, 0)),
-    })).filter(d => d.amount > 0);
-    const DIFF_BAR_COLORS = ['#10B981', '#3B82F6', '#F43F5E'];
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setForm(prev => {
+            const next = { ...prev, [name]: name === 'amount' ? Number(value) : value };
+            if (name === 'type' && value === 'ONE_TIME') next.frequency = null;
+            if (name === 'type' && value === 'RECURRENT' && !prev.frequency) next.frequency = 'MONTHLY';
+            return next;
+        });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await createExpense.mutateAsync({ ...form, projectId: project.id });
+        setForm(emptyExpenseForm());
+        setShowForm(false);
+    };
+
+    const inputCls = 'w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#33cbcc]/20 focus:border-[#33cbcc] outline-none text-gray-800 text-sm transition-colors';
 
     return (
         <div className="space-y-8">
             <h2 className="text-2xl font-bold text-gray-800">{t('projectDetail.budget.title')}</h2>
 
-            {/* Budget stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {budgetStats.map((stat, i) => (
+            {/* Summary stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {summaryStats.map((stat, i) => (
                     <motion.div
                         key={i}
                         initial={{ opacity: 0, y: 20 }}
@@ -467,9 +496,9 @@ const BudgetView = ({ project }: { project: ProjectData }) => {
                 ))}
             </div>
 
-            {/* Charts */}
+            {/* Donut chart + expenses list */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Budget utilization donut */}
+                {/* Donut */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -478,67 +507,132 @@ const BudgetView = ({ project }: { project: ProjectData }) => {
                 >
                     <h3 className="text-lg font-bold text-gray-800 mb-4">{t('projectDetail.budget.expenseBreakdown')}</h3>
                     <div className="h-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={donutData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={85}
-                                    paddingAngle={4}
-                                    dataKey="value"
-                                    strokeWidth={0}
-                                >
-                                    {donutData.map((_, i) => (
-                                        <Cell key={i} fill={PIE_COLORS[i]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                                    formatter={(value) => fmtCurrency(value as number)}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="text-center">
-                                <p className="text-xs text-gray-400">{t('projectDetail.budget.utilization')}</p>
-                                <p className="text-2xl font-bold text-gray-800">{project.progress}%</p>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Cost by difficulty */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 }}
-                    className="bg-white p-6 rounded-3xl border border-gray-100"
-                >
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">{t('projectDetail.budget.monthlySpend')}</h3>
-                    <div className="h-64">
-                        {diffBreakdown.length > 0 ? (
+                        {revenue === 0 && totalExpenses === 0 ? (
+                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">—</div>
+                        ) : (
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={diffBreakdown} barSize={40}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} />
+                                <PieChart>
+                                    <Pie
+                                        data={donutData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={85}
+                                        paddingAngle={4}
+                                        dataKey="value"
+                                        strokeWidth={0}
+                                    >
+                                        {donutData.map((_, i) => (
+                                            <Cell key={i} fill={PIE_COLORS[i]} />
+                                        ))}
+                                    </Pie>
                                     <Tooltip
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
                                         formatter={(value) => fmtCurrency(value as number)}
                                     />
-                                    <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                                        {diffBreakdown.map((_, i) => (
-                                            <Cell key={i} fill={DIFF_BAR_COLORS[i % DIFF_BAR_COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
+                                </PieChart>
                             </ResponsiveContainer>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                                {t('projectDetail.tasks.noTasks')}
+                        )}
+                        {(revenue > 0 || totalExpenses > 0) && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="text-center">
+                                    <p className="text-xs text-gray-400">{t('projectDetail.budget.utilization')}</p>
+                                    <p className="text-2xl font-bold text-gray-800">
+                                        {revenue > 0 ? `${Math.min(100, Math.round((totalExpenses / revenue) * 100))}%` : '—'}
+                                    </p>
+                                </div>
                             </div>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* Expenses list */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="bg-white p-6 rounded-3xl border border-gray-100 flex flex-col"
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">{t('projectDetail.budget.expenses')}</h3>
+                        <button
+                            onClick={() => setShowForm(v => !v)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#33cbcc] hover:bg-[#2bb5b6] rounded-lg transition-colors"
+                        >
+                            <Plus size={13} />
+                            {t('projectDetail.budget.addExpense')}
+                        </button>
+                    </div>
+
+                    {/* Inline add form */}
+                    <AnimatePresence>
+                        {showForm && (
+                            <motion.form
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                onSubmit={handleSubmit}
+                                className="mb-4 space-y-3 overflow-hidden"
+                            >
+                                <input type="text" name="title" required placeholder="Titre / Description" value={form.title} onChange={handleChange} className={inputCls} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input type="number" name="amount" required min="0" placeholder="Montant (FCFA)" value={form.amount || ''} onChange={handleChange} className={inputCls} />
+                                    <input type="date" name="date" required value={form.date} onChange={handleChange} className={inputCls} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <select name="category" value={form.category} onChange={handleChange} className={inputCls}>
+                                        {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <select name="type" value={form.type} onChange={handleChange} className={inputCls}>
+                                        <option value="ONE_TIME">Ponctuelle</option>
+                                        <option value="RECURRENT">Récurrente</option>
+                                    </select>
+                                </div>
+                                {form.type === 'RECURRENT' && (
+                                    <select name="frequency" value={form.frequency || 'MONTHLY'} onChange={handleChange} className={inputCls}>
+                                        <option value="DAILY">Quotidienne</option>
+                                        <option value="WEEKLY">Hebdomadaire</option>
+                                        <option value="MONTHLY">Mensuelle</option>
+                                        <option value="YEARLY">Annuelle</option>
+                                    </select>
+                                )}
+                                <div className="flex gap-2 justify-end">
+                                    <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                                        Annuler
+                                    </button>
+                                    <button type="submit" disabled={createExpense.isPending} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#33cbcc] hover:bg-[#2bb5b6] rounded-lg transition-colors disabled:opacity-50">
+                                        {createExpense.isPending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                                        Enregistrer
+                                    </button>
+                                </div>
+                            </motion.form>
+                        )}
+                    </AnimatePresence>
+
+                    {/* List */}
+                    <div className="flex-1 overflow-y-auto space-y-2 max-h-64">
+                        {expensesLoading ? (
+                            <div className="flex justify-center py-6"><Loader2 size={20} className="animate-spin text-[#33cbcc]" /></div>
+                        ) : expenses.length === 0 ? (
+                            <div className="flex items-center justify-center h-20 text-gray-400 text-sm">{t('projectDetail.tasks.noTasks')}</div>
+                        ) : (
+                            expenses.map(exp => (
+                                <div key={exp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl group">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-800 truncate">{exp.title}</p>
+                                        <p className="text-xs text-gray-400">{exp.category} · {new Date(exp.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 ml-2 shrink-0">
+                                        <span className="text-sm font-semibold text-gray-800">{fmtCurrency(Number(exp.amount))}</span>
+                                        <button
+                                            onClick={() => deleteExpense.mutate(exp.id)}
+                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-500 transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
                         )}
                     </div>
                 </motion.div>

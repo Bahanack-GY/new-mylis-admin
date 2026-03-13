@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formationsApi } from './api';
 import type { CreateFormationDto } from './types';
+import { toast } from 'sonner';
 
 export const formationKeys = {
     all: ['formations'] as const,
@@ -24,6 +25,10 @@ export const useCreateFormation = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateFormationDto) => formationsApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: formationKeys.all }),
+        onSuccess: () => {
+            toast.success('Training created');
+            qc.invalidateQueries({ queryKey: formationKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };

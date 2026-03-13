@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentsApi } from './api';
 import type { CreateDocumentDto } from './types';
+import { toast } from 'sonner';
 
 export const documentKeys = {
     all: ['documents'] as const,
@@ -31,6 +32,22 @@ export const useCreateDocument = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateDocumentDto) => documentsApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: documentKeys.all }),
+        onSuccess: () => {
+            toast.success('Document uploaded');
+            qc.invalidateQueries({ queryKey: documentKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
+    });
+};
+
+export const useDeleteDocument = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => documentsApi.deleteDocument(id),
+        onSuccess: () => {
+            toast.success('Document deleted');
+            qc.invalidateQueries({ queryKey: documentKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };

@@ -16,7 +16,6 @@ import {
   AlignLeft,
   Building,
   Users,
-  DollarSign,
   TrendingUp,
   Upload,
   FileText,
@@ -25,9 +24,10 @@ import {
   Pencil
 } from 'lucide-react';
 import { useProjects, useCreateProject, useProject, useUpdateProject } from '../api/projects/hooks';
+import { ProjectsSkeleton } from '../components/Skeleton';
 import { useDepartments } from '../api/departments/hooks';
 import { useClients, useCreateClient } from '../api/clients/hooks';
-import { useDepartmentScope } from '../contexts/AuthContext';
+import { useAuth, useDepartmentScope } from '../contexts/AuthContext';
 import {
   AreaChart,
   Area,
@@ -320,12 +320,16 @@ const CreateClientModal = ({ onClose, onCreated }: { onClose: () => void; onCrea
 
 /* ─── Create Project Modal ───────────────────────────────── */
 
-const CreateProjectModal = ({ onClose }: { onClose: () => void }) => {
+const CreateProjectModal = ({ onClose, hodDepartmentId }: { onClose: () => void; hodDepartmentId?: string | null }) => {
   const { t } = useTranslation();
   const createProject = useCreateProject();
   const { data: apiDepartments } = useDepartments();
   const { data: allClients } = useClients();
   const [showCreateClient, setShowCreateClient] = useState(false);
+
+  const hodDepartment = hodDepartmentId
+    ? (apiDepartments || []).find(d => d.id === hodDepartmentId)
+    : null;
 
   const [form, setForm] = useState<ProjectForm>({
     name: '',
@@ -340,6 +344,13 @@ const CreateProjectModal = ({ onClose }: { onClose: () => void }) => {
     srs: null,
     otherDocs: [],
   });
+
+  // Auto-set department when HOD's department becomes available
+  useEffect(() => {
+    if (hodDepartment && !form.department) {
+      setForm(prev => ({ ...prev, department: hodDepartment.name }));
+    }
+  }, [hodDepartment?.name]);
 
   // Close on Escape + lock scroll
   useEffect(() => {
@@ -452,16 +463,23 @@ const CreateProjectModal = ({ onClose }: { onClose: () => void }) => {
               <Building size={12} />
               {t('projects.formDepartment')}
             </label>
-            <select
-              value={form.department}
-              onChange={e => update('department', e.target.value)}
-              className={selectCls}
-            >
-              <option value="">{t('projects.formDepartmentPlaceholder')}</option>
-              {(apiDepartments || []).map(d => (
-                <option key={d.id} value={d.name}>{d.name}</option>
-              ))}
-            </select>
+            {hodDepartment ? (
+              <div className="w-full bg-gray-50 rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-700 font-medium flex items-center gap-2">
+                <Building size={13} className="text-gray-400 shrink-0" />
+                {hodDepartment.name}
+              </div>
+            ) : (
+              <select
+                value={form.department}
+                onChange={e => update('department', e.target.value)}
+                className={selectCls}
+              >
+                <option value="">{t('projects.formDepartmentPlaceholder')}</option>
+                {(apiDepartments || []).map(d => (
+                  <option key={d.id} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Client */}
@@ -501,34 +519,19 @@ const CreateProjectModal = ({ onClose }: { onClose: () => void }) => {
             )}
           </AnimatePresence>
 
-          {/* Cost + Revenue row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>
-                <DollarSign size={12} />
-                {t('projects.formCost')}
-              </label>
-              <input
-                type="text"
-                value={form.cost}
-                onChange={e => update('cost', e.target.value)}
-                placeholder="0 FCFA"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>
-                <TrendingUp size={12} />
-                {t('projects.formRevenue')}
-              </label>
-              <input
-                type="text"
-                value={form.revenue}
-                onChange={e => update('revenue', e.target.value)}
-                placeholder="0 FCFA"
-                className={inputCls}
-              />
-            </div>
+          {/* Revenue */}
+          <div>
+            <label className={labelCls}>
+              <TrendingUp size={12} />
+              {t('projects.formRevenue')}
+            </label>
+            <input
+              type="text"
+              value={form.revenue}
+              onChange={e => update('revenue', e.target.value)}
+              placeholder="0 FCFA"
+              className={inputCls}
+            />
           </div>
 
           {/* Start date + Due date row */}
@@ -790,15 +793,9 @@ const EditProjectModal = ({ projectId, onClose }: { projectId: string; onClose: 
                 {(allClients || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}><DollarSign size={12} />{t('projects.formCost')}</label>
-                <input type="text" value={form.cost} onChange={e => update('cost', e.target.value)} placeholder="0 FCFA" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}><TrendingUp size={12} />{t('projects.formRevenue')}</label>
-                <input type="text" value={form.revenue} onChange={e => update('revenue', e.target.value)} placeholder="0 FCFA" className={inputCls} />
-              </div>
+            <div>
+              <label className={labelCls}><TrendingUp size={12} />{t('projects.formRevenue')}</label>
+              <input type="text" value={form.revenue} onChange={e => update('revenue', e.target.value)} placeholder="0 FCFA" className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -862,9 +859,11 @@ const Projects = () => {
   const [editProjectId, setEditProjectId] = useState<string | null>(null);
 
   // API data
+  const { role, departmentId } = useAuth();
   const deptScope = useDepartmentScope();
   const { data: apiProjects, isLoading } = useProjects(deptScope);
   const { data: apiDepartments } = useDepartments();
+  const isHod = role === 'HEAD_OF_DEPARTMENT';
 
   // Map API projects to display shape — no mock fallback
   const projects: Project[] = (apiProjects || []).map((p) => {
@@ -936,11 +935,7 @@ const Projects = () => {
   ];
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-      </div>
-    );
+    return <ProjectsSkeleton />;
   }
 
   return (
@@ -1169,7 +1164,7 @@ const Projects = () => {
       {/* Create Project Modal */}
       <AnimatePresence>
         {showCreateModal && (
-          <CreateProjectModal onClose={() => setShowCreateModal(false)} />
+          <CreateProjectModal onClose={() => setShowCreateModal(false)} hodDepartmentId={isHod ? departmentId : null} />
         )}
       </AnimatePresence>
     </div>

@@ -47,6 +47,7 @@ import {
     useRejectInvoice,
     useDeleteInvoice,
 } from '../api/invoices/hooks';
+import { InvoicesSkeleton } from '../components/Skeleton';
 import type { Invoice, InvoiceStatus } from '../api/invoices/types';
 import { useInvoiceTemplate } from '../api/invoices/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
@@ -845,11 +846,7 @@ const Invoices = () => {
     }, [invoices, t]);
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <InvoicesSkeleton />;
     }
 
     const statCards = [

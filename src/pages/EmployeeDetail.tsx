@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectsByDepartment } from '../api/projects';
-import { useCreateTask, useTasksByEmployee, type Task } from '../api/tasks';
+import { useCreateTask, useTasksByEmployee, useUpdateTask, useDeleteTask, useTaskHistory, type Task, type TaskHistoryEntry } from '../api/tasks';
 import {
     FileText,
     Clock,
@@ -52,8 +52,12 @@ import {
     UserX,
     UserCheck,
     ShieldAlert,
+    KeyRound,
+    EyeOff,
+    History,
 } from 'lucide-react';
-import { useEmployee, useEmployeeStats, useEmployeeBadges, useUpdateEmployee, useDismissEmployee, useReinstateEmployee } from '../api/employees/hooks';
+import { useEmployee, useEmployeeStats, useEmployeeBadges, useUpdateEmployee, useDismissEmployee, useReinstateEmployee, useChangeEmployeePassword } from '../api/employees/hooks';
+import { DetailPageSkeleton } from '../components/Skeleton';
 import badge1 from '../assets/badges/1.jpg';
 import badge2 from '../assets/badges/2.jpg';
 import badge3 from '../assets/badges/3.jpg';
@@ -83,6 +87,7 @@ import { useFormations } from '../api/formations/hooks';
 import { useSanctionsByEmployee, useCreateSanction, useDeleteSanction } from '../api/sanctions/hooks';
 import { useEntretiens } from '../api/entretiens/hooks';
 import { useDocuments } from '../api/documents/hooks';
+import { documentsApi } from '../api/documents/api';
 import {
     BarChart,
     Bar,
@@ -128,9 +133,14 @@ const SKILLS = [
 const EditEmployeeModal = ({ employee, onClose }: { employee: EmployeeUI; onClose: () => void }) => {
     const { t } = useTranslation();
     const updateEmployee = useUpdateEmployee();
+    const changePassword = useChangeEmployeePassword();
     const { data: apiDepartments } = useDepartments();
     const { data: apiPositions } = usePositions();
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [passwordSuccess, setPasswordSuccess] = useState(false);
 
     const [form, setForm] = useState({
         firstName: employee.firstName || '',
@@ -515,6 +525,44 @@ const EditEmployeeModal = ({ employee, onClose }: { employee: EmployeeUI; onClos
                                     {skill}
                                 </button>
                             ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Change Password */}
+                <div className="px-6 pb-5">
+                    <div className="border border-gray-100 rounded-xl p-4 space-y-3">
+                        <label className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            <KeyRound size={11} />
+                            {t('employees.edit.changePassword')}
+                        </label>
+                        <div className="relative">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={newPassword}
+                                onChange={e => { setNewPassword(e.target.value); setPasswordSuccess(false); }}
+                                placeholder={t('employees.edit.newPasswordPlaceholder')}
+                                className="w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all"
+                            />
+                            <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                disabled={newPassword.length < 6 || changePassword.isPending}
+                                onClick={() => changePassword.mutate({ id: employee.id, password: newPassword }, {
+                                    onSuccess: () => { setPasswordSuccess(true); setNewPassword(''); },
+                                })}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-colors ${
+                                    newPassword.length >= 6 ? 'bg-[#283852] hover:bg-[#1e2a3d]' : 'bg-gray-300 cursor-not-allowed'
+                                }`}
+                            >
+                                {changePassword.isPending ? <Loader2 size={13} className="animate-spin" /> : <KeyRound size={13} />}
+                                {t('employees.edit.setPassword')}
+                            </button>
+                            {passwordSuccess && <span className="text-xs text-green-500 font-medium">{t('employees.edit.passwordUpdated')}</span>}
                         </div>
                     </div>
                 </div>
@@ -1083,6 +1131,182 @@ const getWeekDates = (refDate: Date) => {
     });
 };
 
+/* ─── Edit Task Modal ─────────────────────────────────── */
+
+const EditTaskModal = ({
+    task,
+    onClose,
+    onSave,
+    isSaving,
+    t,
+}: {
+    task: Task;
+    onClose: () => void;
+    onSave: (dto: Partial<Task>) => void;
+    isSaving: boolean;
+    t: (key: string) => string;
+}) => {
+    const [form, setForm] = useState({
+        title: task.title || '',
+        description: task.description || '',
+        difficulty: task.difficulty || 'MEDIUM',
+        dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+        startDate: task.startDate ? task.startDate.split('T')[0] : '',
+        endDate: task.endDate ? task.endDate.split('T')[0] : '',
+        startTime: task.startTime || '',
+    });
+
+    const inputCls = 'w-full bg-white rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30 focus:border-[#33cbcc] transition-all';
+    const labelCls = 'text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 block';
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#33cbcc]/10 flex items-center justify-center">
+                            <Pencil size={18} className="text-[#33cbcc]" />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">{t('employeeDetail.tasks.editTask')}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                    <div>
+                        <label className={labelCls}>{t('employeeDetail.tasks.titlePlaceholder')}</label>
+                        <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={inputCls} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>{t('employeeDetail.tasks.descriptionPlaceholder')}</label>
+                        <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} className={`${inputCls} resize-none`} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>{t('employeeDetail.tasks.difficulty')}</label>
+                        <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value as 'EASY' | 'MEDIUM' | 'HARD' }))} className={inputCls}>
+                            <option value="EASY">{t('employeeDetail.tasks.difficultyEasy')}</option>
+                            <option value="MEDIUM">{t('employeeDetail.tasks.difficultyMedium')}</option>
+                            <option value="HARD">{t('employeeDetail.tasks.difficultyHard')}</option>
+                        </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className={labelCls}>{t('employeeDetail.tasks.startDate')}</label>
+                            <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
+                        </div>
+                        <div>
+                            <label className={labelCls}>{t('employeeDetail.tasks.endDate')}</label>
+                            <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className={inputCls} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className={labelCls}>{t('employeeDetail.tasks.startTime')}</label>
+                        <input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} className={inputCls} />
+                    </div>
+                </div>
+                <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">{t('employeeDetail.cancel')}</button>
+                    <button
+                        onClick={() => onSave({ title: form.title, description: form.description, difficulty: form.difficulty as any, dueDate: form.dueDate || undefined, startDate: form.startDate || undefined, endDate: form.endDate || undefined, startTime: form.startTime || undefined })}
+                        disabled={!form.title.trim() || isSaving}
+                        className="px-5 py-2 bg-[#33cbcc] text-white rounded-xl text-sm font-medium hover:bg-[#2bb5b6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                        {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        {t('employeeDetail.save')}
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+/* ─── Task History Modal ──────────────────────────────── */
+
+const TaskHistoryModal = ({
+    taskId,
+    onClose,
+    t,
+}: {
+    taskId: string;
+    onClose: () => void;
+    t: (key: string) => string;
+}) => {
+    const { data: history = [], isLoading } = useTaskHistory(taskId);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            >
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#283852]/10 flex items-center justify-center">
+                            <History size={18} className="text-[#283852]" />
+                        </div>
+                        <h3 className="text-base font-bold text-gray-800">{t('employeeDetail.tasks.historyTitle')}</h3>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X size={18} />
+                    </button>
+                </div>
+                <div className="px-6 py-5 max-h-[60vh] overflow-y-auto">
+                    {isLoading ? (
+                        <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-[#33cbcc]" /></div>
+                    ) : history.length === 0 ? (
+                        <p className="text-center text-sm text-gray-400 py-8">{t('employeeDetail.tasks.historyEmpty')}</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {(history as TaskHistoryEntry[]).map(entry => (
+                                <div key={entry.id} className="bg-gray-50 rounded-xl p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-[#283852]">{entry.changedByName}</span>
+                                        <span className="text-[11px] text-gray-400">{new Date(entry.createdAt).toLocaleString()}</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {Object.entries(entry.changes).map(([field, change]) => (
+                                            <div key={field} className="text-[11px] text-gray-600">
+                                                <span className="font-medium text-gray-700 capitalize">{field}:</span>{' '}
+                                                <span className="line-through text-gray-400">{String(change.from ?? '—')}</span>
+                                                {' → '}
+                                                <span className="text-[#33cbcc] font-medium">{String(change.to ?? '—')}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
 const TasksView = ({ employee }: { employee: Employee }) => {
     const { t } = useTranslation();
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -1091,11 +1315,15 @@ const TasksView = ({ employee }: { employee: Employee }) => {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [drafts, setDrafts] = useState<TaskDraft[]>([emptyDraft()]);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [showHistoryTaskId, setShowHistoryTaskId] = useState<string | null>(null);
 
     // Fetch department projects and employee tasks
     const { data: departmentProjects } = useProjectsByDepartment(employee.departmentId);
     const { data: apiTasks = [] } = useTasksByEmployee(employee.id);
     const createTaskMutation = useCreateTask();
+    const updateTaskMutation = useUpdateTask();
+    const deleteTaskMutation = useDeleteTask();
 
     // Debug logging
     console.log('Employee departmentId:', employee.departmentId);
@@ -1375,14 +1603,58 @@ const TasksView = ({ employee }: { employee: Employee }) => {
                                     <div className="bg-gray-50 rounded-xl p-3"><p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">{t('employeeDetail.tasks.time')}</p><p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedTask.time || '—'}</p></div>
                                     <div className="bg-gray-50 rounded-xl p-3"><p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">{t('employeeDetail.tasks.assigneePlaceholder')}</p><p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedTask.assignee || '—'}</p></div>
                                     <div className="bg-gray-50 rounded-xl p-3"><p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">{t('employeeDetail.tasks.status')}</p><p className="text-sm font-semibold mt-0.5" style={{ color: selectedTask.state === 'COMPLETED' ? '#22c55e' : '#33cbcc' }}>{selectedTask.state === 'COMPLETED' ? t('employeeDetail.tasks.done') : selectedTask.state === 'IN_PROGRESS' ? t('employeeDetail.tasks.inProgress') : t('employeeDetail.tasks.pending')}</p></div>
+                                    <div className="bg-blue-50 rounded-xl p-3 col-span-1"><p className="text-[10px] text-blue-400 uppercase tracking-wider font-medium">{t('employeeDetail.tasks.startedAt')}</p><p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedTask.startedAt ? new Date(selectedTask.startedAt).toLocaleString() : '—'}</p></div>
+                                    <div className="bg-green-50 rounded-xl p-3 col-span-1"><p className="text-[10px] text-green-500 uppercase tracking-wider font-medium">{t('employeeDetail.tasks.completedAt')}</p><p className="text-sm font-semibold text-gray-800 mt-0.5">{selectedTask.completedAt ? new Date(selectedTask.completedAt).toLocaleString() : '—'}</p></div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-bold px-2 py-1 rounded" style={{ backgroundColor: `${difficultyConfig[(selectedTask.difficulty?.toLowerCase() as TaskDifficulty) || 'medium'].color}15`, color: difficultyConfig[(selectedTask.difficulty?.toLowerCase() as TaskDifficulty) || 'medium'].color }}>{difficultyConfig[(selectedTask.difficulty?.toLowerCase() as TaskDifficulty) || 'medium'].label}</span>
                                     <span className="text-xs font-bold px-2 py-1 rounded flex items-center gap-1" style={{ backgroundColor: `${priorityConfig[selectedTask.priority || 'medium'].color}15`, color: priorityConfig[selectedTask.priority || 'medium'].color }}><Flag size={10} /> {priorityConfig[selectedTask.priority || 'medium'].label}</span>
                                 </div>
+                                <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-1">
+                                    {!selectedTask.selfAssigned && (
+                                        <button
+                                            onClick={() => { setEditingTask(selectedTask); setSelectedTask(null); }}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[#33cbcc]/10 text-[#33cbcc] hover:bg-[#33cbcc]/20 transition-colors"
+                                        >
+                                            <Pencil size={12} /> {t('employeeDetail.tasks.editTask')}
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => { setShowHistoryTaskId(selectedTask.id); setSelectedTask(null); }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[#283852]/10 text-[#283852] hover:bg-[#283852]/20 transition-colors"
+                                    >
+                                        <History size={12} /> {t('employeeDetail.tasks.viewHistory')}
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Task Modal */}
+            <AnimatePresence>
+                {editingTask && (
+                    <EditTaskModal
+                        task={editingTask}
+                        onClose={() => setEditingTask(null)}
+                        onSave={(dto) => {
+                            updateTaskMutation.mutate({ id: editingTask.id, dto }, { onSuccess: () => setEditingTask(null) });
+                        }}
+                        isSaving={updateTaskMutation.isPending}
+                        t={t}
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Task History Modal */}
+            <AnimatePresence>
+                {showHistoryTaskId && (
+                    <TaskHistoryModal
+                        taskId={showHistoryTaskId}
+                        onClose={() => setShowHistoryTaskId(null)}
+                        t={t}
+                    />
                 )}
             </AnimatePresence>
 
@@ -1402,6 +1674,8 @@ const TasksView = ({ employee }: { employee: Employee }) => {
                                         <span className="text-[11px] text-gray-400 flex items-center gap-1"><Clock size={11} /> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No deadline'}</span>
                                         {task.assignedTo && <span className="text-[11px] text-gray-500 font-medium">{task.assignedTo.firstName} {task.assignedTo.lastName}</span>}
                                         {task.projectId && (() => { const proj = (departmentProjects || []).find(p => p.id === task.projectId); return proj ? <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: '#33cbcc15', color: '#33cbcc' }}><span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#33cbcc' }} />{proj.name}</span> : null; })()}
+                                        {task.startedAt && <span className="text-[11px] text-blue-400 flex items-center gap-1">▶ {new Date(task.startedAt).toLocaleString()}</span>}
+                                        {task.completedAt && <span className="text-[11px] text-green-500 flex items-center gap-1">✓ {new Date(task.completedAt).toLocaleString()}</span>}
                                     </div>
                                 </div>
                             </div>
@@ -1411,6 +1685,31 @@ const TasksView = ({ employee }: { employee: Employee }) => {
                                 <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${task.state === 'COMPLETED' ? 'bg-green-50 text-green-500' : task.state === 'IN_PROGRESS' ? 'bg-[#33cbcc]/10 text-[#33cbcc]' : 'bg-gray-100 text-gray-400'}`}>
                                     {task.state === 'COMPLETED' ? t('employeeDetail.tasks.done') : task.state === 'IN_PROGRESS' ? t('employeeDetail.tasks.inProgress') : t('employeeDetail.tasks.pending')}
                                 </span>
+                                {!task.selfAssigned && (
+                                    <>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); setEditingTask(task); }}
+                                            className="p-1.5 rounded-lg hover:bg-[#33cbcc]/10 text-gray-400 hover:text-[#33cbcc] transition-colors"
+                                            title={t('employeeDetail.tasks.editTask')}
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                        <button
+                                            onClick={e => { e.stopPropagation(); if (window.confirm(t('employeeDetail.tasks.confirmDelete'))) { deleteTaskMutation.mutate(task.id); } }}
+                                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                            title={t('employeeDetail.tasks.deleteTask')}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    onClick={e => { e.stopPropagation(); setShowHistoryTaskId(task.id); }}
+                                    className="p-1.5 rounded-lg hover:bg-[#283852]/10 text-gray-400 hover:text-[#283852] transition-colors"
+                                    title={t('employeeDetail.tasks.viewHistory')}
+                                >
+                                    <History size={14} />
+                                </button>
                             </div>
                         </div>
                     ))}
@@ -1851,14 +2150,62 @@ const DOC_TYPE_COLORS: Record<string, string> = {
 // ============================================================
 const RecrutementsView = ({ employee }: { employee: Employee }) => {
     const { t } = useTranslation();
+    const updateEmployee = useUpdateEmployee();
     const docs = employee.recruitmentDocs || [];
+    const [showAdd, setShowAdd] = useState(false);
+    const [newDoc, setNewDoc] = useState({ name: '', type: 'cv', file: null as File | null });
+    const [isUploading, setIsUploading] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    const handleAdd = async () => {
+        if (!newDoc.name.trim() || !newDoc.file) return;
+        setIsUploading(true);
+        try {
+            const result = await documentsApi.uploadFile(newDoc.file, 'recruitment');
+            const updated = [...docs, { name: newDoc.name.trim(), type: newDoc.type, filePath: result.filePath }];
+            updateEmployee.mutate({ id: employee.id, dto: { recruitmentDocs: updated } }, {
+                onSuccess: () => { setShowAdd(false); setNewDoc({ name: '', type: 'cv', file: null }); },
+                onSettled: () => setIsUploading(false),
+            });
+        } catch {
+            setIsUploading(false);
+        }
+    };
+
+    const handleRemove = (index: number) => {
+        const updated = docs.filter((_, i) => i !== index);
+        updateEmployee.mutate({ id: employee.id, dto: { recruitmentDocs: updated } });
+    };
 
     return (
         <div className="space-y-5">
-            <h2 className="text-xl font-bold text-gray-800">{t('employeeSidebar.recrutements')}</h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-800">{t('employeeSidebar.recrutements')}</h2>
+                <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#33cbcc] hover:text-[#2bb5b6] transition-colors">
+                    <Plus size={14} />{t('employeeDetail.addDocument')}
+                </button>
+            </div>
+            {showAdd && (
+                <div className="bg-[#33cbcc]/5 rounded-2xl p-4 border border-[#33cbcc]/20 space-y-3">
+                    <input type="text" placeholder={t('employeeDetail.docName')} value={newDoc.name} onChange={e => setNewDoc(p => ({ ...p, name: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30" />
+                    <select value={newDoc.type} onChange={e => setNewDoc(p => ({ ...p, type: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30">
+                        {['cv', 'coverLetter', 'id', 'references', 'other'].map(t2 => <option key={t2} value={t2}>{t2}</option>)}
+                    </select>
+                    <div onClick={() => fileRef.current?.click()} className="cursor-pointer border-2 border-dashed border-gray-200 rounded-xl p-3 text-center hover:border-[#33cbcc]/40 transition-colors">
+                        {newDoc.file ? <span className="text-xs text-gray-700">{newDoc.file.name}</span> : <span className="text-xs text-gray-400">{t('employeeDetail.clickToUpload')}</span>}
+                    </div>
+                    <input ref={fileRef} type="file" className="hidden" onChange={e => setNewDoc(p => ({ ...p, file: e.target.files?.[0] || null }))} />
+                    <div className="flex gap-2 justify-end">
+                        <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">{t('employeeDetail.cancel')}</button>
+                        <button disabled={!newDoc.name.trim() || !newDoc.file || isUploading} onClick={handleAdd} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl bg-[#33cbcc] text-white hover:bg-[#2bb5b6] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+                            {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}{t('employeeDetail.upload')}
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
                 {docs.map((doc, i) => (
-                    <div key={i} className="flex items-center gap-4 p-4 hover:bg-gray-50/50 transition-colors">
+                    <div key={i} className="flex items-center gap-4 p-4 hover:bg-gray-50/50 transition-colors group">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${DOC_TYPE_COLORS[doc.type] || 'bg-blue-50 text-blue-500'}`}>
                             <FileText size={20} />
                         </div>
@@ -1868,30 +2215,19 @@ const RecrutementsView = ({ employee }: { employee: Employee }) => {
                         </div>
                         {doc.filePath ? (
                             <div className="flex items-center gap-1">
-                                <a
-                                    href={getFileUrl(doc.filePath)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"
-                                >
-                                    <Eye size={16} />
-                                </a>
-                                <a
-                                    href={getFileUrl(doc.filePath)}
-                                    download
-                                    className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"
-                                >
-                                    <Download size={16} />
-                                </a>
+                                <a href={getFileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"><Eye size={16} /></a>
+                                <a href={getFileUrl(doc.filePath)} download className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"><Download size={16} /></a>
+                                <button onClick={() => handleRemove(i)} className="p-2 text-gray-300 hover:text-rose-500 transition-colors rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
                             </div>
                         ) : (
-                            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600">
-                                {t('employeeDetail.noFile')}
-                            </span>
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600">{t('employeeDetail.noFile')}</span>
+                                <button onClick={() => handleRemove(i)} className="p-2 text-gray-300 hover:text-rose-500 transition-colors rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                            </div>
                         )}
                     </div>
                 ))}
-                {docs.length === 0 && <p className="p-8 text-center text-gray-400 text-sm">{t('employeeDetail.emptyState')}</p>}
+                {docs.length === 0 && !showAdd && <p className="p-8 text-center text-gray-400 text-sm">{t('employeeDetail.emptyState')}</p>}
             </div>
         </div>
     );
@@ -1902,14 +2238,62 @@ const RecrutementsView = ({ employee }: { employee: Employee }) => {
 // ============================================================
 const EducationView = ({ employee }: { employee: Employee }) => {
     const { t } = useTranslation();
+    const updateEmployee = useUpdateEmployee();
     const docs = employee.educationDocs || [];
+    const [showAdd, setShowAdd] = useState(false);
+    const [newDoc, setNewDoc] = useState({ name: '', type: 'diploma', file: null as File | null });
+    const [isUploading, setIsUploading] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    const handleAdd = async () => {
+        if (!newDoc.name.trim() || !newDoc.file) return;
+        setIsUploading(true);
+        try {
+            const result = await documentsApi.uploadFile(newDoc.file, 'formation');
+            const updated = [...docs, { name: newDoc.name.trim(), type: newDoc.type, filePath: result.filePath }];
+            updateEmployee.mutate({ id: employee.id, dto: { educationDocs: updated } }, {
+                onSuccess: () => { setShowAdd(false); setNewDoc({ name: '', type: 'diploma', file: null }); },
+                onSettled: () => setIsUploading(false),
+            });
+        } catch {
+            setIsUploading(false);
+        }
+    };
+
+    const handleRemove = (index: number) => {
+        const updated = docs.filter((_, i) => i !== index);
+        updateEmployee.mutate({ id: employee.id, dto: { educationDocs: updated } });
+    };
 
     return (
         <div className="space-y-5">
-            <h2 className="text-xl font-bold text-gray-800">{t('employeeSidebar.education')}</h2>
+            <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-800">{t('employeeSidebar.education')}</h2>
+                <button onClick={() => setShowAdd(v => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#33cbcc] hover:text-[#2bb5b6] transition-colors">
+                    <Plus size={14} />{t('employeeDetail.addDocument')}
+                </button>
+            </div>
+            {showAdd && (
+                <div className="bg-[#33cbcc]/5 rounded-2xl p-4 border border-[#33cbcc]/20 space-y-3">
+                    <input type="text" placeholder={t('employeeDetail.docName')} value={newDoc.name} onChange={e => setNewDoc(p => ({ ...p, name: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30" />
+                    <select value={newDoc.type} onChange={e => setNewDoc(p => ({ ...p, type: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#33cbcc]/30">
+                        {['diploma', 'certificate', 'transcript', 'other'].map(t2 => <option key={t2} value={t2}>{t2}</option>)}
+                    </select>
+                    <div onClick={() => fileRef.current?.click()} className="cursor-pointer border-2 border-dashed border-gray-200 rounded-xl p-3 text-center hover:border-[#33cbcc]/40 transition-colors">
+                        {newDoc.file ? <span className="text-xs text-gray-700">{newDoc.file.name}</span> : <span className="text-xs text-gray-400">{t('employeeDetail.clickToUpload')}</span>}
+                    </div>
+                    <input ref={fileRef} type="file" className="hidden" onChange={e => setNewDoc(p => ({ ...p, file: e.target.files?.[0] || null }))} />
+                    <div className="flex gap-2 justify-end">
+                        <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 text-xs rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">{t('employeeDetail.cancel')}</button>
+                        <button disabled={!newDoc.name.trim() || !newDoc.file || isUploading} onClick={handleAdd} className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl bg-[#33cbcc] text-white hover:bg-[#2bb5b6] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+                            {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}{t('employeeDetail.upload')}
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="space-y-4">
                 {docs.map((doc, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center gap-4">
+                    <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center gap-4 group">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${DOC_TYPE_COLORS[doc.type] || 'bg-[#283852]/10 text-[#283852]'}`}>
                             <GraduationCap size={24} />
                         </div>
@@ -1919,30 +2303,19 @@ const EducationView = ({ employee }: { employee: Employee }) => {
                         </div>
                         {doc.filePath ? (
                             <div className="flex items-center gap-1">
-                                <a
-                                    href={getFileUrl(doc.filePath)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"
-                                >
-                                    <Eye size={16} />
-                                </a>
-                                <a
-                                    href={getFileUrl(doc.filePath)}
-                                    download
-                                    className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"
-                                >
-                                    <Download size={16} />
-                                </a>
+                                <a href={getFileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer" className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"><Eye size={16} /></a>
+                                <a href={getFileUrl(doc.filePath)} download className="p-2 text-gray-400 hover:text-[#33cbcc] transition-colors rounded-lg hover:bg-gray-100"><Download size={16} /></a>
+                                <button onClick={() => handleRemove(i)} className="p-2 text-gray-300 hover:text-rose-500 transition-colors rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
                             </div>
                         ) : (
-                            <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600">
-                                {t('employeeDetail.noFile')}
-                            </span>
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600">{t('employeeDetail.noFile')}</span>
+                                <button onClick={() => handleRemove(i)} className="p-2 text-gray-300 hover:text-rose-500 transition-colors rounded-lg hover:bg-gray-100 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                            </div>
                         )}
                     </motion.div>
                 ))}
-                {docs.length === 0 && (
+                {docs.length === 0 && !showAdd && (
                     <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
                         <p className="text-gray-400 text-sm">{t('employeeDetail.emptyState')}</p>
                     </div>
@@ -2167,11 +2540,7 @@ const EmployeeDetail = ({ employee, activeTab, teamMembers = [] }: EmployeeDetai
     const isApiLoading = loadingEmployee || loadingFormations || loadingEntretiens || loadingDocuments;
 
     if (isApiLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <DetailPageSkeleton />;
     }
 
     const isDismissed = !!employee.dismissed;

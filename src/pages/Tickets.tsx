@@ -25,6 +25,7 @@ import {
     Calendar,
 } from 'lucide-react';
 import { useTickets, useCreateTicket, useTakeTicket, useCloseTicket } from '../api/tickets/hooks';
+import { TicketsAdminSkeleton } from '../components/Skeleton';
 import { useDepartments } from '../api/departments/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 import {
@@ -577,11 +578,7 @@ const Tickets = () => {
     ];
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <TicketsAdminSkeleton />;
     }
 
 

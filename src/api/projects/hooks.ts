@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from './api';
 import type { CreateProjectDto, UpdateProjectDto } from './types';
+import { toast } from 'sonner';
 
 export const projectKeys = {
     all: ['projects'] as const,
@@ -32,7 +33,11 @@ export const useCreateProject = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateProjectDto) => projectsApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
+        onSuccess: () => {
+            toast.success('Project created');
+            qc.invalidateQueries({ queryKey: projectKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -42,9 +47,11 @@ export const useUpdateProject = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateProjectDto }) =>
             projectsApi.update(id, dto),
         onSuccess: (_, { id }) => {
+            toast.success('Project updated');
             qc.invalidateQueries({ queryKey: projectKeys.all });
             qc.invalidateQueries({ queryKey: projectKeys.detail(id) });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -52,6 +59,10 @@ export const useDeleteProject = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => projectsApi.delete(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: projectKeys.all }),
+        onSuccess: () => {
+            toast.success('Project deleted');
+            qc.invalidateQueries({ queryKey: projectKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };

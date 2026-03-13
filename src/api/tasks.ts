@@ -21,8 +21,21 @@ export interface Task {
     time?: string;
     assignee?: string;
     repeat?: string;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    selfAssigned?: boolean;
+    createdByUserId?: string | null;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface TaskHistoryEntry {
+    id: string;
+    taskId: string;
+    changedByUserId: string | null;
+    changedByName: string;
+    changes: Record<string, { from: any; to: any }>;
+    createdAt: string;
 }
 
 export interface CreateTaskDto {
@@ -74,3 +87,41 @@ export const useTasksByEmployee = (employeeId: string | number | undefined) => {
         enabled: !!employeeId,
     });
 };
+
+export const useUpdateTask = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, dto }: { id: string; dto: Partial<Task> }) => {
+            const { data } = await api.patch(`/tasks/${id}`, dto);
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', 'employee'] });
+        },
+    });
+};
+
+export const useDeleteTask = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: string) => {
+            await api.delete(`/tasks/${id}`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['tasks', 'employee'] });
+        },
+    });
+};
+
+export const useTaskHistory = (taskId: string | null) =>
+    useQuery<TaskHistoryEntry[]>({
+        queryKey: ['tasks', 'history', taskId],
+        queryFn: async () => {
+            if (!taskId) return [];
+            const { data } = await api.get(`/tasks/${taskId}/history`);
+            return data;
+        },
+        enabled: !!taskId,
+    });

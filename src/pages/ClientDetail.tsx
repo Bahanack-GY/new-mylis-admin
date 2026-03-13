@@ -36,9 +36,9 @@ import {
 /* ─── Helpers ──────────────────────────────────────────── */
 
 const fmtCurrency = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M DA`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K DA`;
-    return `${n.toFixed(0)} DA`;
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M FCFA`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K FCFA`;
+    return `${n.toFixed(0)} FCFA`;
 };
 
 const fmtDate = (d?: string | null) => {
@@ -164,7 +164,7 @@ const OverviewView = ({ client }: { client: ClientData }) => {
                             <DollarSign size={16} className="text-gray-400" />
                             <div>
                                 <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t('clientDetail.overview.price')}</p>
-                                <p className="text-sm font-medium text-gray-800">{client.price ? `${client.price} DA` : '—'}</p>
+                                <p className="text-sm font-medium text-gray-800">{client.price ? `${client.price} FCFA` : '—'}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">

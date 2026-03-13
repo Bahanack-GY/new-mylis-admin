@@ -22,6 +22,7 @@ import {
     MessageSquare,
 } from 'lucide-react';
 import { useDemands, useDemandStats, useValidateDemand, useRejectDemand } from '../api/demands/hooks';
+import { DemandsAdminSkeleton } from '../components/Skeleton';
 import { useCreateDM, useSendMessage } from '../api/chat/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 import type { Demand, DemandImportance } from '../api/demands/types';
@@ -414,11 +415,7 @@ const Demands = () => {
     ];
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <DemandsAdminSkeleton />;
     }
 
     const getDemandLabel = (d: Demand) => {

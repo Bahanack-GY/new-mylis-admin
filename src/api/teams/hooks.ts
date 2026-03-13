@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { teamsApi } from './api';
 import type { CreateTeamDto } from './types';
+import { toast } from 'sonner';
 
 export const teamKeys = {
     all: ['teams'] as const,
@@ -24,6 +25,10 @@ export const useCreateTeam = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateTeamDto) => teamsApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: teamKeys.all }),
+        onSuccess: () => {
+            toast.success('Team created');
+            qc.invalidateQueries({ queryKey: teamKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };

@@ -4,8 +4,9 @@ import ExpenseModal from './ExpenseModal';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { Plus, FileText, Search, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight, Briefcase, Users, Tag, TrendingUp } from 'lucide-react';
+import { Plus, FileText, Search, Trash2, Pencil, ChevronLeft, ChevronRight, Briefcase, Users, Tag, TrendingUp } from 'lucide-react';
 import { useExpenses, useExpenseStats, useDeleteExpense } from '../api/expenses/hooks';
+import { ExpensesSkeleton } from '../components/Skeleton';
 import type { Expense } from '../api/expenses/types';
 
 const COLORS = ['#33cbcc', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#ef4444', '#06b6d4', '#84cc16', '#f97316'];
@@ -25,8 +26,12 @@ export default function Expenses() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+    const [page, setPage] = useState(1);
 
-    const { data: expenses, isLoading: expLoading } = useExpenses();
+    const { data: expensesPage, isLoading: expLoading } = useExpenses(page);
+    const expenses = expensesPage?.data ?? [];
+    const totalPages = expensesPage?.totalPages ?? 1;
+    const total = expensesPage?.total ?? 0;
     const { data: stats, isLoading: statsLoading } = useExpenseStats(selectedYear);
     const deleteExpense = useDeleteExpense();
     const [visibleSeries, setVisibleSeries] = useState<Set<string>>(new Set());
@@ -56,12 +61,12 @@ export default function Expenses() {
     }, [seriesKey]);
 
     const filteredExpenses = useMemo(() => {
-        if (!expenses) return [];
         if (!search) return expenses;
         const q = search.toLowerCase();
         return expenses.filter(e =>
             e.title.toLowerCase().includes(q) ||
-            e.category.toLowerCase().includes(q)
+            e.category.toLowerCase().includes(q) ||
+            (e.project?.name || '').toLowerCase().includes(q)
         );
     }, [expenses, search]);
 
@@ -78,11 +83,7 @@ export default function Expenses() {
     };
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <ExpensesSkeleton />;
     }
 
     return (
@@ -328,6 +329,7 @@ export default function Expenses() {
                         <thead>
                             <tr className="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider">
                                 <th className="px-6 py-4 font-semibold w-1/3">Dépense</th>
+                                <th className="px-6 py-4 font-semibold">Projet</th>
                                 <th className="px-6 py-4 font-semibold">Type</th>
                                 <th className="px-6 py-4 font-semibold">Date</th>
                                 <th className="px-6 py-4 font-semibold text-right">Montant</th>
@@ -343,6 +345,16 @@ export default function Expenses() {
                                             <span className="w-1.5 h-1.5 rounded-full bg-[#33cbcc]" />
                                             {expense.category}
                                         </p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {expense.project ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                                                <Briefcase size={11} />
+                                                {expense.project.name}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">—</span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
                                         {expense.type === 'ONE_TIME' ? (
@@ -387,7 +399,7 @@ export default function Expenses() {
                             ))}
                             {filteredExpenses.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 bg-gray-50/30">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500 bg-gray-50/30">
                                         Aucune dépense trouvée.
                                     </td>
                                 </tr>
@@ -395,6 +407,44 @@ export default function Expenses() {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+                        <p className="text-xs text-gray-500">
+                            {total} dépense{total > 1 ? 's' : ''} · page {page} / {totalPages}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-white text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft size={15} />
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                <button
+                                    key={p}
+                                    onClick={() => setPage(p)}
+                                    className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${
+                                        p === page
+                                            ? 'bg-[#33cbcc] text-white'
+                                            : 'border border-gray-200 text-gray-600 hover:bg-white'
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                className="p-1.5 rounded-lg border border-gray-200 hover:bg-white text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <ExpenseModal

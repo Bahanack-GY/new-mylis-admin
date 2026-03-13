@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { MessagesSkeleton } from '../components/Skeleton';
 import { useSocket } from '../contexts/SocketContext';
 import Header from '../components/Header';
 import {
@@ -1219,11 +1220,7 @@ const Messages = () => {
         .map(([userId]) => userId);
 
     if (channelsLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <MessagesSkeleton />;
     }
 
     return (

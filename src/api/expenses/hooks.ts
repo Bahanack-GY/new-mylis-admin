@@ -1,17 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { expensesApi } from './api';
 import type { CreateExpenseDto } from './types';
+import { toast } from 'sonner';
 
 export const expenseKeys = {
     all: ['expenses'] as const,
+    list: (page: number) => ['expenses', 'list', page] as const,
     detail: (id: string) => ['expenses', id] as const,
     stats: (year?: number) => ['expenses', 'stats', year] as const,
+    project: (projectId: string) => ['expenses', 'project', projectId] as const,
 };
 
-export const useExpenses = () =>
+export const useExpenses = (page = 1) =>
     useQuery({
-        queryKey: expenseKeys.all,
-        queryFn: () => expensesApi.getAll(),
+        queryKey: expenseKeys.list(page),
+        queryFn: () => expensesApi.getAll(page, 10),
+    });
+
+export const useProjectExpenses = (projectId: string) =>
+    useQuery({
+        queryKey: expenseKeys.project(projectId),
+        queryFn: () => expensesApi.getAllByProject(projectId),
+        enabled: !!projectId,
+        select: (res) => res.data,
     });
 
 export const useExpense = (id: string) =>
@@ -32,8 +43,10 @@ export const useCreateExpense = () => {
     return useMutation({
         mutationFn: (data: CreateExpenseDto) => expensesApi.create(data),
         onSuccess: () => {
+            toast.success('Expense recorded');
             qc.invalidateQueries({ queryKey: ['expenses'] });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -42,8 +55,10 @@ export const useUpdateExpense = () => {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Partial<CreateExpenseDto> }) => expensesApi.update(id, data),
         onSuccess: () => {
+            toast.success('Expense updated');
             qc.invalidateQueries({ queryKey: ['expenses'] });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -52,7 +67,9 @@ export const useDeleteExpense = () => {
     return useMutation({
         mutationFn: (id: string) => expensesApi.delete(id),
         onSuccess: () => {
+            toast.success('Expense deleted');
             qc.invalidateQueries({ queryKey: ['expenses'] });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };

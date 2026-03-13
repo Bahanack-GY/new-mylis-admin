@@ -32,6 +32,9 @@ export const employeesApi = {
     reinstate: (id: string) =>
         api.patch<Employee>(`/employees/${id}/reinstate`).then(r => r.data),
 
+    changePassword: (id: string, password: string) =>
+        api.patch(`/employees/${id}/password`, { password }).then(r => r.data),
+
     getTodayBirthdays: () =>
         api.get<{ id: string; firstName: string; lastName: string; avatarUrl: string | null; departmentName: string }[]>('/employees/birthdays/today').then(r => r.data),
 };

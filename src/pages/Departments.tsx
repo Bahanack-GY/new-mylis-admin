@@ -22,13 +22,16 @@ import {
     Check,
     ChevronDown,
     Loader2,
-    Pencil
+    Pencil,
+    LayoutGrid,
+    List,
 } from 'lucide-react';
 import { useDepartments, useCreateDepartment, useUpdateDepartment } from '../api/departments/hooks';
+import { DepartmentsSkeleton } from '../components/Skeleton';
 import { useEmployees } from '../api/employees/hooks';
 import { useInvoices } from '../api/invoices/hooks';
 import { useDepartmentScope, useAuth } from '../contexts/AuthContext';
-import CreateRoleModal from '../components/modals/CreateRoleModal';
+import RolesModal from '../components/modals/RolesModal';
 import {
     BarChart,
     Bar,
@@ -760,6 +763,7 @@ const Departments = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const deptScope = useDepartmentScope();
     const { role } = useAuth();
     const isHOD = role === 'HEAD_OF_DEPARTMENT';
@@ -802,11 +806,7 @@ const Departments = () => {
     }));
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-            </div>
-        );
+        return <DepartmentsSkeleton />;
     }
 
     const totalEmployees = DEPARTMENTS.reduce((s, d) => s + d.employees.length, 0);
@@ -853,7 +853,7 @@ const Departments = () => {
                         className="flex items-center gap-2 bg-white text-gray-700 border border-gray-200 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
                     >
                         <Briefcase size={16} />
-                        {t('departments.createRole', 'Create Role')}
+                        {t('departments.manageRoles', 'Manage Roles')}
                     </button>
                     {!isHOD && (
                     <button
@@ -970,80 +970,145 @@ const Departments = () => {
                 </motion.div>
             </div>
 
-            {/* Department Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {DEPARTMENTS.map((dept, i) => (
-                    <motion.div
-                        key={dept.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 + i * 0.08 }}
-                        onClick={() => navigate(`/departments/${dept.id}`)}
-                        className="bg-white rounded-3xl p-6 border border-gray-100 cursor-pointer hover:border-[#33cbcc]/30 transition-all group"
+            {/* Department Cards / List */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">{DEPARTMENTS.length} {t('departments.stats.total', 'departments')}</p>
+                <div className="flex items-center bg-white rounded-2xl border border-gray-100 shadow-sm p-1">
+                    <button
+                        onClick={() => setViewMode('grid')}
+                        className={`p-2 rounded-xl transition-colors ${viewMode === 'grid' ? 'bg-[#33cbcc] text-white' : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        {/* Icon + Name */}
-                        <div className="flex items-center gap-4 mb-5">
-                            <div
-                                className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 duration-300"
-                                style={{ backgroundColor: `${dept.color}15` }}
-                            >
-                                <dept.icon size={24} style={{ color: dept.color }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-bold text-gray-800">{dept.name}</h3>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                    <img src={dept.head.avatar} alt="" className="w-4 h-4 rounded-full border border-gray-200" />
-                                    <span className="text-xs text-gray-400">{dept.head.name}</span>
-                                </div>
-                            </div>
-                            {!isHOD && (
-                                <button
-                                    onClick={e => { e.stopPropagation(); setEditingDepartment(dept); }}
-                                    className="p-2 rounded-xl text-gray-300 hover:text-[#33cbcc] hover:bg-[#33cbcc]/5 transition-colors opacity-0 group-hover:opacity-100"
+                        <LayoutGrid size={16} />
+                    </button>
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-2 rounded-xl transition-colors ${viewMode === 'list' ? 'bg-[#33cbcc] text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                        <List size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {DEPARTMENTS.map((dept, i) => (
+                        <motion.div
+                            key={dept.id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 + i * 0.08 }}
+                            onClick={() => navigate(`/departments/${dept.id}`)}
+                            className="bg-white rounded-3xl p-6 border border-gray-100 cursor-pointer hover:border-[#33cbcc]/30 transition-all group"
+                        >
+                            {/* Icon + Name */}
+                            <div className="flex items-center gap-4 mb-5">
+                                <div
+                                    className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 duration-300"
+                                    style={{ backgroundColor: `${dept.color}15` }}
                                 >
-                                    <Pencil size={16} />
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Stats row */}
-                        <div className="grid grid-cols-3 gap-3 mb-5">
-                            <div className="text-center bg-gray-50 rounded-xl py-3">
-                                <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{t('departments.card.employees')}</p>
-                                <p className="text-lg font-bold text-gray-800">{dept.employees.length}</p>
-                            </div>
-                            <div className="text-center bg-gray-50 rounded-xl py-3">
-                                <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{t('departments.card.projects')}</p>
-                                <p className="text-lg font-bold text-gray-800">{dept.projects.length}</p>
-                            </div>
-                            <div className="text-center bg-gray-50 rounded-xl py-3">
-                                <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{t('departments.card.budget')}</p>
-                                <p className="text-lg font-bold text-gray-800">{(dept.budget / 1000000).toFixed(1)}M</p>
-                            </div>
-                        </div>
-
-                        {/* Employee avatars */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex -space-x-2">
-                                {dept.employees.slice(0, 5).map(emp => (
-                                    <img
-                                        key={emp.id}
-                                        src={emp.avatar}
-                                        alt={emp.name}
-                                        className="w-8 h-8 rounded-full border-2 border-white"
-                                    />
-                                ))}
-                                {dept.employees.length > 5 && (
-                                    <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
-                                        <span className="text-[10px] font-bold text-gray-500">+{dept.employees.length - 5}</span>
+                                    <dept.icon size={24} style={{ color: dept.color }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-lg font-bold text-gray-800">{dept.name}</h3>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <img src={dept.head.avatar} alt="" className="w-4 h-4 rounded-full border border-gray-200" />
+                                        <span className="text-xs text-gray-400">{dept.head.name}</span>
                                     </div>
+                                </div>
+                                {!isHOD && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); setEditingDepartment(dept); }}
+                                        className="p-2 rounded-xl text-gray-300 hover:text-[#33cbcc] hover:bg-[#33cbcc]/5 transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
                                 )}
                             </div>
-                            <ArrowUpRight size={18} className="text-gray-300 group-hover:text-[#33cbcc] transition-colors" />
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
+
+                            {/* Stats row */}
+                            <div className="grid grid-cols-3 gap-3 mb-5">
+                                <div className="text-center bg-gray-50 rounded-xl py-3">
+                                    <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{t('departments.card.employees')}</p>
+                                    <p className="text-lg font-bold text-gray-800">{dept.employees.length}</p>
+                                </div>
+                                <div className="text-center bg-gray-50 rounded-xl py-3">
+                                    <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{t('departments.card.projects')}</p>
+                                    <p className="text-lg font-bold text-gray-800">{dept.projects.length}</p>
+                                </div>
+                                <div className="text-center bg-gray-50 rounded-xl py-3">
+                                    <p className="text-[10px] text-gray-400 uppercase font-semibold mb-1">{t('departments.card.budget')}</p>
+                                    <p className="text-lg font-bold text-gray-800">{(dept.budget / 1000000).toFixed(1)}M</p>
+                                </div>
+                            </div>
+
+                            {/* Employee avatars */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex -space-x-2">
+                                    {dept.employees.slice(0, 5).map(emp => (
+                                        <img
+                                            key={emp.id}
+                                            src={emp.avatar}
+                                            alt={emp.name}
+                                            className="w-8 h-8 rounded-full border-2 border-white"
+                                        />
+                                    ))}
+                                    {dept.employees.length > 5 && (
+                                        <div className="w-8 h-8 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-gray-500">+{dept.employees.length - 5}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <ArrowUpRight size={18} className="text-gray-300 group-hover:text-[#33cbcc] transition-colors" />
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            ) : (
+                <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
+                    {DEPARTMENTS.map((dept, i) => (
+                        <motion.div
+                            key={dept.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            onClick={() => navigate(`/departments/${dept.id}`)}
+                            className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/60 cursor-pointer transition-colors group"
+                        >
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: `${dept.color}15` }}
+                            >
+                                <dept.icon size={18} style={{ color: dept.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800">{dept.name}</p>
+                                <p className="text-xs text-gray-400">{dept.head.name}</p>
+                            </div>
+                            <div className="flex items-center gap-6 text-xs text-gray-500 shrink-0">
+                                <span className="flex items-center gap-1.5">
+                                    <Users size={12} className="text-gray-400" />
+                                    {dept.employees.length}
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <Briefcase size={12} className="text-gray-400" />
+                                    {dept.projects.length}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                {!isHOD && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); setEditingDepartment(dept); }}
+                                        className="p-1.5 rounded-lg text-gray-300 hover:text-[#33cbcc] hover:bg-[#33cbcc]/5 transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Pencil size={14} />
+                                    </button>
+                                )}
+                                <ArrowUpRight size={16} className="text-gray-300 group-hover:text-[#33cbcc] transition-colors" />
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
 
             {/* Create Department Modal */}
             <AnimatePresence>
@@ -1051,7 +1116,7 @@ const Departments = () => {
                     <CreateDepartmentModal onClose={() => setShowCreateModal(false)} />
                 )}
                 {showRoleModal && (
-                    <CreateRoleModal onClose={() => setShowRoleModal(false)} />
+                    <RolesModal onClose={() => setShowRoleModal(false)} />
                 )}
                 {editingDepartment && (
                     <EditDepartmentModal department={editingDepartment} onClose={() => setEditingDepartment(null)} />

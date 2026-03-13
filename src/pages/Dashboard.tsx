@@ -18,13 +18,10 @@ import {
   CheckCircle,
   TrendingUp,
   MoreHorizontal,
-  ArrowUpRight,
-  FileText,
   DollarSign,
   CreditCard,
   Coins,
   Clock,
-  Loader2,
   Calendar,
   ChevronDown,
 } from 'lucide-react';
@@ -34,11 +31,10 @@ import { useEmployees } from '../api/employees/hooks';
 import { useProjects } from '../api/projects/hooks';
 import { useTasks } from '../api/tasks/hooks';
 import { useDepartments } from '../api/departments/hooks';
-import { useLogs } from '../api/logs/hooks';
-import type { Log } from '../api/logs/types';
 import { useInvoiceStats } from '../api/invoices/hooks';
 import { useExpenseStats } from '../api/expenses/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
+import { DashboardSkeleton } from '../components/Skeleton';
 
 type DatePreset = 'today' | 'this_week' | 'this_month' | 'this_year' | 'custom';
 
@@ -96,11 +92,10 @@ const Dashboard = () => {
   const { data: apiProjects, isLoading: loadingProjects } = useProjects(deptScope);
   const { data: apiTasks, isLoading: loadingTasks } = useTasks(deptScope, from, to);
   const { data: apiDepartments, isLoading: loadingDepartments } = useDepartments();
-  const { data: apiLogs, isLoading: loadingLogs } = useLogs(from, to);
   const { data: invoiceStats } = useInvoiceStats(deptScope, from, to);
   const { data: expenseStats } = useExpenseStats();
 
-  const isLoading = loadingEmployees || loadingProjects || loadingTasks || loadingDepartments || loadingLogs;
+  const isLoading = loadingEmployees || loadingProjects || loadingTasks || loadingDepartments;
 
   // Derive stats from real data only
   const totalEmployees = apiEmployees?.length ?? 0;
@@ -169,11 +164,7 @@ const Dashboard = () => {
   const currentLabel = presetOptions.find(o => o.key === datePreset)?.label || '';
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#33cbcc]" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -380,97 +371,6 @@ const Dashboard = () => {
       </div>
 
       {/* Recents Table Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white p-6 rounded-3xl border border-gray-100"
-      >
-         <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-bold text-gray-800">{t('dashboard.recentActivities.title')}</h3>
-            <a href="#" className="text-[#33cbcc] font-medium hover:underline flex items-center gap-1">
-               {t('dashboard.recentActivities.viewAll')} <ArrowUpRight size={16} />
-            </a>
-          </div>
-
-          <div className="overflow-x-auto">
-             <table className="w-full">
-                <thead>
-                   <tr className="text-left text-gray-400 text-sm border-b border-gray-100">
-                      <th className="pb-4 font-medium pl-4">{t('dashboard.recentActivities.columns.activity')}</th>
-                      <th className="pb-4 font-medium">{t('dashboard.recentActivities.columns.date')}</th>
-                      <th className="pb-4 font-medium">{t('dashboard.recentActivities.columns.user')}</th>
-                      <th className="pb-4 font-medium">{t('dashboard.recentActivities.columns.status')}</th>
-                      <th className="pb-4 font-medium pr-4">{t('dashboard.recentActivities.columns.amountRef')}</th>
-                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                   {(apiLogs || []).length === 0 ? (
-                      <tr>
-                         <td colSpan={5} className="py-8 text-center text-gray-400 text-sm">
-                            {t('dashboard.recentActivities.noData', 'No recent activities')}
-                         </td>
-                      </tr>
-                   ) : (apiLogs || []).slice(0, 10).map((log: Log) => {
-                      const userName = log.user?.employee
-                         ? `${log.user.employee.firstName} ${log.user.employee.lastName}`
-                         : log.user?.email || log.userId;
-                      const entity = (log.details as any)?.entity || '';
-                      const target = (log.details as any)?.target || '';
-                      const description = [entity, target].filter(Boolean).join(' · ') || log.user?.role || '';
-                      const actionColors: Record<string, string> = {
-                         CREATE: 'bg-green-100 text-green-600',
-                         LOGIN: 'bg-blue-100 text-blue-600',
-                         UPDATE: 'bg-amber-100 text-amber-600',
-                         DELETE: 'bg-red-100 text-red-600',
-                         SEND: 'bg-purple-100 text-purple-600',
-                         PAY: 'bg-emerald-100 text-emerald-600',
-                         ASSIGN: 'bg-cyan-100 text-cyan-600',
-                         REJECT: 'bg-rose-100 text-rose-600',
-                         CLOSE: 'bg-gray-100 text-gray-600',
-                      };
-                      const badgeClass = actionColors[log.action] || 'bg-green-100 text-green-600';
-                      return (
-                      <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                         <td className="py-4 pl-4">
-                            <div className="flex items-center gap-4">
-                               <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                                  <FileText size={18} />
-                                </div>
-                                <div>
-                                   <p className="font-semibold text-gray-800">{log.action}{entity ? ` ${entity}` : ''}</p>
-                                   <p className="text-xs text-gray-400">{target || description}</p>
-                                </div>
-                            </div>
-                         </td>
-                         <td className="py-4 text-gray-500 text-sm">{new Date(log.timestamp).toLocaleDateString()}</td>
-                         <td className="py-4">
-                            <div className="flex items-center gap-2">
-                               {log.user?.employee?.avatarUrl ? (
-                                  <img src={log.user.employee.avatarUrl} alt={userName} className="w-6 h-6 rounded-full object-cover" />
-                               ) : (
-                                  <div className="w-6 h-6 rounded-full bg-[#283852] flex items-center justify-center text-white text-[10px] font-semibold">
-                                     {userName.charAt(0).toUpperCase()}
-                                  </div>
-                               )}
-                               <span className="text-sm font-medium text-gray-700">{userName}</span>
-                            </div>
-                         </td>
-                         <td className="py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badgeClass}`}>
-                               {log.action}
-                            </span>
-                         </td>
-                         <td className="py-4 pr-4 font-semibold text-gray-800">
-                            #{log.id.slice(0, 8)}
-                         </td>
-                      </tr>
-                      );
-                   })}
-                </tbody>
-             </table>
-          </div>
-      </motion.div>
     </div>
   );
 };

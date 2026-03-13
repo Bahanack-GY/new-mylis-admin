@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { demandsApi } from './api';
+import { toast } from 'sonner';
 
 export const demandKeys = {
     all: ['demands'] as const,
@@ -31,9 +32,11 @@ export const useValidateDemand = () => {
     return useMutation({
         mutationFn: (id: string) => demandsApi.validate(id),
         onSuccess: () => {
+            toast.success('Demand approved');
             qc.invalidateQueries({ queryKey: demandKeys.all });
             qc.invalidateQueries({ queryKey: demandKeys.stats });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -42,8 +45,10 @@ export const useRejectDemand = () => {
     return useMutation({
         mutationFn: ({ id, reason }: { id: string; reason?: string }) => demandsApi.reject(id, reason),
         onSuccess: () => {
+            toast.success('Demand rejected');
             qc.invalidateQueries({ queryKey: demandKeys.all });
             qc.invalidateQueries({ queryKey: demandKeys.stats });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from './api';
 import type { CreateTaskDto, UpdateTaskDto } from './types';
+import { toast } from 'sonner';
 
 export const taskKeys = {
     all: ['tasks'] as const,
@@ -32,7 +33,11 @@ export const useCreateTask = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateTaskDto) => tasksApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all }),
+        onSuccess: () => {
+            toast.success('Task created');
+            qc.invalidateQueries({ queryKey: taskKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -42,9 +47,11 @@ export const useUpdateTask = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateTaskDto }) =>
             tasksApi.update(id, dto),
         onSuccess: (_, { id }) => {
+            toast.success('Task updated');
             qc.invalidateQueries({ queryKey: taskKeys.all });
             qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
         },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -59,6 +66,17 @@ export const useDeleteTask = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => tasksApi.delete(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.all }),
+        onSuccess: () => {
+            toast.success('Task deleted');
+            qc.invalidateQueries({ queryKey: taskKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
+
+export const useTaskHistory = (taskId: string | null) =>
+    useQuery({
+        queryKey: [...taskKeys.all, 'history', taskId],
+        queryFn: () => tasksApi.getHistory(taskId!),
+        enabled: !!taskId,
+    });

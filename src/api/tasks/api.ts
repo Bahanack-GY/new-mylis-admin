@@ -27,4 +27,7 @@ export const tasksApi = {
 
     getByProject: (projectId: string) =>
         api.get<Task[]>(`/tasks/project/${projectId}`).then(r => r.data),
+
+    getHistory: (taskId: string) =>
+        api.get(`/tasks/${taskId}/history`).then(r => r.data),
 };

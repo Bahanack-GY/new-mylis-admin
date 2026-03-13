@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketsApi } from './api';
 import type { CreateTicketDto, TakeTicketDto } from './types';
+import { toast } from 'sonner';
 
 export const ticketKeys = {
     all: ['tickets'] as const,
@@ -31,7 +32,11 @@ export const useCreateTicket = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateTicketDto) => ticketsApi.create(dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ticketKeys.all }),
+        onSuccess: () => {
+            toast.success('Ticket created');
+            qc.invalidateQueries({ queryKey: ticketKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -40,7 +45,11 @@ export const useTakeTicket = () => {
     return useMutation({
         mutationFn: ({ id, dto }: { id: string; dto: TakeTicketDto }) =>
             ticketsApi.take(id, dto),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ticketKeys.all }),
+        onSuccess: () => {
+            toast.success('Ticket accepted');
+            qc.invalidateQueries({ queryKey: ticketKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
 
@@ -48,6 +57,10 @@ export const useCloseTicket = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => ticketsApi.close(id),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ticketKeys.all }),
+        onSuccess: () => {
+            toast.success('Ticket closed');
+            qc.invalidateQueries({ queryKey: ticketKeys.all });
+        },
+        onError: () => toast.error('Something went wrong'),
     });
 };
