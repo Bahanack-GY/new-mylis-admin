@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from './api';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const notificationKeys = {
     all: ['notifications'] as const,
@@ -25,9 +26,9 @@ export const useMarkAllAsRead = () => {
     return useMutation({
         mutationFn: () => notificationsApi.markAllAsRead(),
         onSuccess: () => {
-            toast.success('All notifications marked as read');
+            toast.success(i18n.t('toast.allNotificationsRead'));
             qc.invalidateQueries({ queryKey: notificationKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

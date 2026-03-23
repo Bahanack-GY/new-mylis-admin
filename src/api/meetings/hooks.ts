@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { meetingsApi } from './api';
 import type { CreateMeetingDto, UpdateMeetingDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const meetingKeys = {
     all: ['meetings'] as const,
@@ -26,10 +27,10 @@ export const useCreateMeeting = () => {
     return useMutation({
         mutationFn: (dto: CreateMeetingDto) => meetingsApi.create(dto),
         onSuccess: () => {
-            toast.success('Meeting scheduled');
+            toast.success(i18n.t('toast.meetingScheduled'));
             qc.invalidateQueries({ queryKey: meetingKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -39,10 +40,10 @@ export const useUpdateMeeting = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateMeetingDto }) =>
             meetingsApi.update(id, dto),
         onSuccess: () => {
-            toast.success('Meeting updated');
+            toast.success(i18n.t('toast.meetingUpdated'));
             qc.invalidateQueries({ queryKey: meetingKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -51,9 +52,9 @@ export const useDeleteMeeting = () => {
     return useMutation({
         mutationFn: (id: string) => meetingsApi.remove(id),
         onSuccess: () => {
-            toast.success('Meeting deleted');
+            toast.success(i18n.t('toast.meetingDeleted'));
             qc.invalidateQueries({ queryKey: meetingKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

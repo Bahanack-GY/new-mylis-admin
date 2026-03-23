@@ -574,10 +574,10 @@ const CreateProjectModal = ({ onClose, hodDepartmentId }: { onClose: () => void;
               <p className="text-xs font-medium text-gray-500 mb-1.5">{t('projects.formContract')}</p>
               {form.contract ? (
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <FileText size={14} className="text-[#33cbcc]" />
-                    <span className="font-medium text-gray-700">{form.contract.name}</span>
-                    <span className="text-gray-400">{form.contract.size}</span>
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <FileText size={14} className="text-[#33cbcc] shrink-0" />
+                    <span className="font-medium text-gray-700 truncate max-w-[180px] inline-block align-bottom">{form.contract.name}</span>
+                    <span className="text-gray-400 shrink-0">{form.contract.size}</span>
                   </div>
                   <button onClick={() => update('contract', null)} className="text-gray-400 hover:text-red-500 transition-colors">
                     <Trash2 size={14} />
@@ -597,10 +597,10 @@ const CreateProjectModal = ({ onClose, hodDepartmentId }: { onClose: () => void;
               <p className="text-xs font-medium text-gray-500 mb-1.5">{t('projects.formSRS')}</p>
               {form.srs ? (
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <FileText size={14} className="text-[#33cbcc]" />
-                    <span className="font-medium text-gray-700">{form.srs.name}</span>
-                    <span className="text-gray-400">{form.srs.size}</span>
+                  <div className="flex items-center gap-2 text-sm min-w-0">
+                    <FileText size={14} className="text-[#33cbcc] shrink-0" />
+                    <span className="font-medium text-gray-700 truncate max-w-[180px] inline-block align-bottom">{form.srs.name}</span>
+                    <span className="text-gray-400 shrink-0">{form.srs.size}</span>
                   </div>
                   <button onClick={() => update('srs', null)} className="text-gray-400 hover:text-red-500 transition-colors">
                     <Trash2 size={14} />
@@ -622,10 +622,10 @@ const CreateProjectModal = ({ onClose, hodDepartmentId }: { onClose: () => void;
                 <div className="space-y-2 mb-3">
                   {form.otherDocs.map((doc, i) => (
                     <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <FileText size={14} className="text-[#33cbcc]" />
-                        <span className="font-medium text-gray-700">{doc.name}</span>
-                        <span className="text-gray-400">{doc.size}</span>
+                      <div className="flex items-center gap-2 text-sm min-w-0">
+                        <FileText size={14} className="text-[#33cbcc] shrink-0" />
+                        <span className="font-medium text-gray-700 truncate max-w-[180px] inline-block align-bottom">{doc.name}</span>
+                        <span className="text-gray-400 shrink-0">{doc.size}</span>
                       </div>
                       <button onClick={() => removeOtherDoc(i)} className="text-gray-400 hover:text-red-500 transition-colors">
                         <Trash2 size={14} />
@@ -1070,6 +1070,12 @@ const Projects = () => {
             <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
               <Briefcase size={48} className="mx-auto text-gray-300 mb-4" />
               <p className="text-gray-400 font-medium">{t('projects.noResults')}</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="mt-4 px-4 py-2 bg-[#33cbcc] text-white text-sm font-semibold rounded-xl hover:bg-[#2bb5b6] transition-colors"
+              >
+                {t('projects.newProject')}
+              </button>
             </div>
           )}
           {filteredProjects.map((project, index) => {
@@ -1093,7 +1099,7 @@ const Projects = () => {
                         {t(`projects.${STATUS_I18N[project.status]}`)}
                       </span>
                     </div>
-                    <p className="text-gray-400 text-sm truncate">{project.description}</p>
+                    <p className="text-gray-400 text-sm line-clamp-2">{project.description}</p>
 
                     {/* Progress bar */}
                     <div className="mt-4">

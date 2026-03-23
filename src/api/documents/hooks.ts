@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { documentsApi } from './api';
 import type { CreateDocumentDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const documentKeys = {
     all: ['documents'] as const,
@@ -33,10 +34,10 @@ export const useCreateDocument = () => {
     return useMutation({
         mutationFn: (dto: CreateDocumentDto) => documentsApi.create(dto),
         onSuccess: () => {
-            toast.success('Document uploaded');
+            toast.success(i18n.t('toast.documentUploaded'));
             qc.invalidateQueries({ queryKey: documentKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -45,9 +46,9 @@ export const useDeleteDocument = () => {
     return useMutation({
         mutationFn: (id: string) => documentsApi.deleteDocument(id),
         onSuccess: () => {
-            toast.success('Document deleted');
+            toast.success(i18n.t('toast.documentDeleted'));
             qc.invalidateQueries({ queryKey: documentKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

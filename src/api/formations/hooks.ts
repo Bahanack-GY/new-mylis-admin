@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formationsApi } from './api';
 import type { CreateFormationDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const formationKeys = {
     all: ['formations'] as const,
@@ -26,9 +27,9 @@ export const useCreateFormation = () => {
     return useMutation({
         mutationFn: (dto: CreateFormationDto) => formationsApi.create(dto),
         onSuccess: () => {
-            toast.success('Training created');
+            toast.success(i18n.t('toast.formationCreated'));
             qc.invalidateQueries({ queryKey: formationKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

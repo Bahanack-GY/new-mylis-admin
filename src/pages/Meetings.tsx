@@ -194,15 +194,15 @@ const MeetingDetailModal = ({ meeting, onClose }: { meeting: MeetingItem; onClos
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {meeting.participants.map((p) => (
-                                <div key={p.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                                <div key={p.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5 min-w-0">
                                     {p.avatar ? (
-                                        <img src={p.avatar} alt="" className="w-6 h-6 rounded-full border border-gray-200" />
+                                        <img src={p.avatar} alt="" className="w-6 h-6 rounded-full border border-gray-200 shrink-0" />
                                     ) : (
-                                        <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center">
+                                        <div className="w-6 h-6 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center shrink-0">
                                             <User size={10} className="text-gray-400" />
                                         </div>
                                     )}
-                                    <span className="text-xs text-gray-600">{p.name}</span>
+                                    <span className="text-xs text-gray-600 truncate">{p.name}</span>
                                 </div>
                             ))}
                             {meeting.participants.length === 0 && (
@@ -1045,6 +1045,12 @@ const Meetings = () => {
                 <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
                     <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-400 font-medium">{t('meetings.noResults')}</p>
+                    <button
+                        onClick={() => setShowScheduleModal(true)}
+                        className="mt-4 px-4 py-2 bg-[#33cbcc] text-white text-sm font-semibold rounded-xl hover:bg-[#2bb5b6] transition-colors"
+                    >
+                        {t('meetings.scheduleMeeting')}
+                    </button>
                 </div>
             )}
 

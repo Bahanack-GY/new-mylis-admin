@@ -555,9 +555,10 @@ const Clients = () => {
                                         {isManager && (
                                             <button
                                                 onClick={e => handleDelete(e, client.id)}
-                                                className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                disabled={deleteClient.isPending}
+                                                className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <Trash2 size={14} />
+                                                {deleteClient.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                             </button>
                                         )}
                                     </div>
@@ -581,9 +582,9 @@ const Clients = () => {
                                 </div>
 
                                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                        <Building size={12} />
-                                        <span>{client.department?.name || '—'}</span>
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0">
+                                        <Building size={12} className="shrink-0" />
+                                        <span className="truncate">{client.department?.name || '—'}</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         {rev.paid > 0 && (
@@ -644,9 +645,9 @@ const Clients = () => {
                                         {client.type === 'subscription' ? t('clients.typeSubscription') : t('clients.typeOneTime')}
                                     </span>
                                 </div>
-                                <div className="col-span-2 flex items-center gap-1.5 text-xs text-gray-500">
-                                    <Building size={12} />
-                                    <span>{client.department?.name || '—'}</span>
+                                <div className="col-span-2 flex items-center gap-1.5 text-xs text-gray-500 min-w-0">
+                                    <Building size={12} className="shrink-0" />
+                                    <span className="truncate">{client.department?.name || '—'}</span>
                                 </div>
                                 <div className="col-span-1 text-sm text-gray-600 font-medium">{client.price || '—'}</div>
                                 <div className="col-span-2 flex items-center gap-3">
@@ -668,9 +669,10 @@ const Clients = () => {
                                     {isManager && (
                                         <button
                                             onClick={e => handleDelete(e, client.id)}
-                                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors"
+                                            disabled={deleteClient.isPending}
+                                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-rose-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <Trash2 size={14} />
+                                            {deleteClient.isPending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                         </button>
                                     )}
                                 </div>
@@ -685,6 +687,12 @@ const Clients = () => {
                 <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
                     <UserCircle size={48} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-400 font-medium">{t('clients.noResults')}</p>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="mt-4 px-4 py-2 bg-[#33cbcc] text-white text-sm font-semibold rounded-xl hover:bg-[#2bb5b6] transition-colors"
+                    >
+                        {t('clients.newClient')}
+                    </button>
                 </div>
             )}
 

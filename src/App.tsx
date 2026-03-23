@@ -16,6 +16,7 @@ import Meetings from "./pages/Meetings"
 import Notifications from "./pages/Notifications"
 import Messages from "./pages/Messages"
 import Profile from "./pages/Profile"
+import Salaries from "./pages/Salaries"
 import DashboardLayout from "./layouts/DashboardLayout"
 import EmployeeDetailLayout from "./layouts/EmployeeDetailLayout"
 import ProjectDetailLayout from "./layouts/ProjectDetailLayout"
@@ -35,30 +36,37 @@ function App() {
         </PublicRoute>
       } />
 
-      {/* Admin routes for MANAGER, HEAD_OF_DEPARTMENT and ACCOUNTANT */}
+      {/* Routes for MANAGER and HEAD_OF_DEPARTMENT only */}
+      <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'HEAD_OF_DEPARTMENT']} />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/employees" element={<Employees />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/departments" element={<Departments />} />
+          <Route path="/activity" element={<ActivityPage />} />
+        </Route>
+        <Route path="/employees/:id" element={<EmployeeDetailLayout />} />
+        <Route path="/departments/:id" element={<DepartmentDetailLayout />} />
+      </Route>
+
+      {/* Routes for MANAGER, HEAD_OF_DEPARTMENT and ACCOUNTANT */}
       <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'HEAD_OF_DEPARTMENT', 'ACCOUNTANT']} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/tasks" element={<Tasks />} />
           <Route path="/projects" element={<Projects />} />
-          <Route path="/departments" element={<Departments />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/tickets" element={<Tickets />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/demands" element={<Demands />} />
           <Route path="/expenses" element={<Expenses />} />
+          <Route path="/salaries" element={<Salaries />} />
           <Route path="/clients" element={<Clients />} />
-          <Route path="/activity" element={<ActivityPage />} />
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
 
         <Route path="/messages" element={<Messages />} />
-        <Route path="/employees/:id" element={<EmployeeDetailLayout />} />
         <Route path="/projects/:id" element={<ProjectDetailLayout />} />
-        <Route path="/departments/:id" element={<DepartmentDetailLayout />} />
         <Route path="/clients/:id" element={<ClientDetailLayout />} />
       </Route>
 

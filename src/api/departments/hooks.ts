@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi, departmentGoalsApi } from './api';
 import type { CreateDepartmentDto, UpdateDepartmentDto, CreateDepartmentGoalDto, UpdateDepartmentGoalDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const departmentKeys = {
     all: ['departments'] as const,
@@ -28,10 +29,10 @@ export const useCreateDepartment = () => {
     return useMutation({
         mutationFn: (dto: CreateDepartmentDto) => departmentsApi.create(dto),
         onSuccess: () => {
-            toast.success('Department created');
+            toast.success(i18n.t('toast.departmentCreated'));
             qc.invalidateQueries({ queryKey: departmentKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -41,11 +42,11 @@ export const useUpdateDepartment = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateDepartmentDto }) =>
             departmentsApi.update(id, dto),
         onSuccess: (_, { id }) => {
-            toast.success('Department updated');
+            toast.success(i18n.t('toast.departmentUpdated'));
             qc.invalidateQueries({ queryKey: departmentKeys.all });
             qc.invalidateQueries({ queryKey: departmentKeys.detail(id) });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -62,10 +63,10 @@ export const useCreateDepartmentGoal = () => {
     return useMutation({
         mutationFn: (dto: CreateDepartmentGoalDto) => departmentGoalsApi.create(dto),
         onSuccess: () => {
-            toast.success('Goal added');
+            toast.success(i18n.t('toast.goalAdded'));
             qc.invalidateQueries({ queryKey: departmentKeys.goals });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -75,10 +76,10 @@ export const useUpdateDepartmentGoal = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateDepartmentGoalDto }) =>
             departmentGoalsApi.update(id, dto),
         onSuccess: () => {
-            toast.success('Goal updated');
+            toast.success(i18n.t('toast.goalUpdated'));
             qc.invalidateQueries({ queryKey: departmentKeys.goals });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -87,9 +88,9 @@ export const useDeleteDepartmentGoal = () => {
     return useMutation({
         mutationFn: (id: string) => departmentGoalsApi.delete(id),
         onSuccess: () => {
-            toast.success('Goal deleted');
+            toast.success(i18n.t('toast.goalDeleted'));
             qc.invalidateQueries({ queryKey: departmentKeys.goals });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authApi } from './api';
 import type { LoginDto, RegisterDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const authKeys = {
     profile: ['auth', 'profile'] as const,
@@ -25,23 +26,23 @@ export const useLogin = () => {
     return useMutation({
         mutationFn: (dto: LoginDto) => authApi.login(dto),
         onSuccess: (data) => {
-            if (!['MANAGER', 'HEAD_OF_DEPARTMENT'].includes(data.user.role)) {
-                toast.error('Access denied: insufficient permissions');
+            if (!['MANAGER', 'HEAD_OF_DEPARTMENT', 'ACCOUNTANT'].includes(data.user.role)) {
+                toast.error(i18n.t('toast.accessDenied'));
                 throw new Error('ACCESS_DENIED');
             }
             setToken(data.access_token);
             qc.invalidateQueries({ queryKey: authKeys.profile });
             navigate('/dashboard');
         },
-        onError: () => toast.error('Login failed. Check your credentials.'),
+        onError: () => toast.error(i18n.t('toast.loginFailed')),
     });
 };
 
 export const useRegister = () =>
     useMutation({
         mutationFn: (dto: RegisterDto) => authApi.register(dto),
-        onSuccess: () => toast.success('Account created'),
-        onError: () => toast.error('Registration failed'),
+        onSuccess: () => toast.success(i18n.t('toast.accountCreated')),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 
 export const useLogout = () => {

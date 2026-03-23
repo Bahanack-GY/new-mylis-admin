@@ -39,7 +39,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         const apiUrl = import.meta.env.VITE_API_URL || 'https://api.mylisapp.online';
 
         const newSocket = io(apiUrl, {
-            auth: { token },
+            // Use a function so the latest token is read on every reconnect attempt,
+            // not the stale value captured at socket creation time.
+            auth: (cb) => cb({ token: localStorage.getItem('access_token') }),
             transports: ['websocket'],
             upgrade: false,
             reconnection: true,
@@ -56,6 +58,16 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
         newSocket.on('disconnect', () => {
             setIsConnected(false);
+        });
+
+        // If the server rejects the connection (expired/invalid JWT), stop the
+        // infinite reconnect loop — the auth context will handle re-login.
+        newSocket.on('connect_error', (err) => {
+            setIsConnected(false);
+            const msg = (err?.message ?? '').toLowerCase();
+            if (msg.includes('jwt') || msg.includes('unauthorized') || msg.includes('auth')) {
+                newSocket.disconnect();
+            }
         });
 
         // Receive full online users list on connect

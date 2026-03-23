@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoicesApi, invoiceTemplatesApi } from './api';
 import type { CreateInvoiceDto, UpdateInvoiceDto, UpsertInvoiceTemplateDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const invoiceKeys = {
     all: ['invoices'] as const,
@@ -29,16 +30,22 @@ export const useInvoiceStats = (departmentId?: string, from?: string, to?: strin
         queryFn: () => invoicesApi.getStats(departmentId, from, to),
     });
 
+export const useRevenueByDepartment = (from?: string, to?: string) =>
+    useQuery({
+        queryKey: ['invoices', 'revenue-by-department', from, to].filter(Boolean),
+        queryFn: () => invoicesApi.getRevenueByDepartment(from, to),
+    });
+
 export const useCreateInvoice = () => {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (dto: CreateInvoiceDto) => invoicesApi.create(dto),
         onSuccess: () => {
-            toast.success('Invoice created');
+            toast.success(i18n.t('toast.invoiceCreated'));
             qc.invalidateQueries({ queryKey: invoiceKeys.all });
             qc.invalidateQueries({ queryKey: invoiceKeys.stats });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -47,12 +54,12 @@ export const useUpdateInvoice = () => {
     return useMutation({
         mutationFn: ({ id, dto }: { id: string; dto: UpdateInvoiceDto }) => invoicesApi.update(id, dto),
         onSuccess: (_, { id }) => {
-            toast.success('Invoice updated');
+            toast.success(i18n.t('toast.invoiceUpdated'));
             qc.invalidateQueries({ queryKey: invoiceKeys.all });
             qc.invalidateQueries({ queryKey: invoiceKeys.detail(id) });
             qc.invalidateQueries({ queryKey: invoiceKeys.stats });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -61,11 +68,15 @@ export const useSendInvoice = () => {
     return useMutation({
         mutationFn: (id: string) => invoicesApi.send(id),
         onSuccess: () => {
-            toast.success('Invoice sent');
+            toast.success(i18n.t('toast.invoiceSent'));
             qc.invalidateQueries({ queryKey: invoiceKeys.all });
             qc.invalidateQueries({ queryKey: invoiceKeys.stats });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => {
+            toast.error(i18n.t('toast.error'));
+            qc.invalidateQueries({ queryKey: invoiceKeys.all });
+            qc.invalidateQueries({ queryKey: invoiceKeys.stats });
+        },
     });
 };
 
@@ -74,11 +85,15 @@ export const usePayInvoice = () => {
     return useMutation({
         mutationFn: (id: string) => invoicesApi.pay(id),
         onSuccess: () => {
-            toast.success('Invoice marked as paid');
+            toast.success(i18n.t('toast.invoicePaid'));
             qc.invalidateQueries({ queryKey: invoiceKeys.all });
             qc.invalidateQueries({ queryKey: invoiceKeys.stats });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => {
+            toast.error(i18n.t('toast.error'));
+            qc.invalidateQueries({ queryKey: invoiceKeys.all });
+            qc.invalidateQueries({ queryKey: invoiceKeys.stats });
+        },
     });
 };
 
@@ -87,11 +102,15 @@ export const useRejectInvoice = () => {
     return useMutation({
         mutationFn: (id: string) => invoicesApi.reject(id),
         onSuccess: () => {
-            toast.success('Invoice rejected');
+            toast.success(i18n.t('toast.invoiceRejected'));
             qc.invalidateQueries({ queryKey: invoiceKeys.all });
             qc.invalidateQueries({ queryKey: invoiceKeys.stats });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => {
+            toast.error(i18n.t('toast.error'));
+            qc.invalidateQueries({ queryKey: invoiceKeys.all });
+            qc.invalidateQueries({ queryKey: invoiceKeys.stats });
+        },
     });
 };
 
@@ -100,11 +119,11 @@ export const useDeleteInvoice = () => {
     return useMutation({
         mutationFn: (id: string) => invoicesApi.remove(id),
         onSuccess: () => {
-            toast.success('Invoice deleted');
+            toast.success(i18n.t('toast.invoiceDeleted'));
             qc.invalidateQueries({ queryKey: invoiceKeys.all });
             qc.invalidateQueries({ queryKey: invoiceKeys.stats });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -121,9 +140,9 @@ export const useUpsertInvoiceTemplate = () => {
         mutationFn: ({ departmentId, dto }: { departmentId: string; dto: UpsertInvoiceTemplateDto }) =>
             invoiceTemplatesApi.upsert(departmentId, dto),
         onSuccess: (_, { departmentId }) => {
-            toast.success('Template saved');
+            toast.success(i18n.t('toast.templateSaved'));
             qc.invalidateQueries({ queryKey: invoiceKeys.template(departmentId) });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sanctionsApi } from './api';
 import type { CreateSanctionDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const sanctionKeys = {
     all: ['sanctions'] as const,
@@ -34,11 +35,11 @@ export const useCreateSanction = () => {
     return useMutation({
         mutationFn: (dto: CreateSanctionDto) => sanctionsApi.create(dto),
         onSuccess: () => {
-            toast.success('Sanction created');
+            toast.success(i18n.t('toast.sanctionCreated'));
             qc.invalidateQueries({ queryKey: sanctionKeys.all });
             qc.invalidateQueries({ queryKey: ['sanctions', 'employee'] });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -47,10 +48,10 @@ export const useDeleteSanction = () => {
     return useMutation({
         mutationFn: (id: string) => sanctionsApi.delete(id),
         onSuccess: () => {
-            toast.success('Sanction deleted');
+            toast.success(i18n.t('toast.sanctionDeleted'));
             qc.invalidateQueries({ queryKey: sanctionKeys.all });
             qc.invalidateQueries({ queryKey: ['sanctions', 'employee'] });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

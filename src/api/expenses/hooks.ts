@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { expensesApi } from './api';
 import type { CreateExpenseDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const expenseKeys = {
     all: ['expenses'] as const,
@@ -43,10 +44,10 @@ export const useCreateExpense = () => {
     return useMutation({
         mutationFn: (data: CreateExpenseDto) => expensesApi.create(data),
         onSuccess: () => {
-            toast.success('Expense recorded');
+            toast.success(i18n.t('toast.expenseRecorded'));
             qc.invalidateQueries({ queryKey: ['expenses'] });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -55,10 +56,10 @@ export const useUpdateExpense = () => {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: Partial<CreateExpenseDto> }) => expensesApi.update(id, data),
         onSuccess: () => {
-            toast.success('Expense updated');
+            toast.success(i18n.t('toast.expenseUpdated'));
             qc.invalidateQueries({ queryKey: ['expenses'] });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -67,9 +68,9 @@ export const useDeleteExpense = () => {
     return useMutation({
         mutationFn: (id: string) => expensesApi.delete(id),
         onSuccess: () => {
-            toast.success('Expense deleted');
+            toast.success(i18n.t('toast.expenseDeleted'));
             qc.invalidateQueries({ queryKey: ['expenses'] });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

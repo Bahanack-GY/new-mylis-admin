@@ -899,12 +899,12 @@ const Tasks = () => {
     /* ── Filtering ── */
 
     const filteredEmployees = employees.filter(e => {
-        const matchesSearch =
-            !searchQuery ||
-            e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            e.role.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesSelection = selectedEmployeeId === null || e.id === selectedEmployeeId;
-        return matchesSearch && matchesSelection;
+        // Row-click selection takes priority — ignore text search when one employee is pinned
+        if (selectedEmployeeId !== null) return e.id === selectedEmployeeId;
+        // Text search filters by name or role
+        if (!searchQuery) return true;
+        return e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+               e.role.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
     const selectedEmployee = selectedEmployeeId !== null
@@ -1179,9 +1179,13 @@ const Tasks = () => {
                             const ts = new Date(t.startDate); ts.setHours(0, 0, 0, 0);
                             const te = new Date(t.endDate);   te.setHours(23, 59, 59, 999);
                             if (ts > boardViewEnd || te < boardViewStart) return false;
-                            // text search
-                            if (searchQuery && !t.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-                                !emp.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                            // text search: when an employee is already selected via dropdown, only match title
+                            // otherwise also match by employee name so typing a name shows their tasks
+                            if (searchQuery) {
+                                const titleMatch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+                                const nameMatch = !boardFilterEmployee && emp.name.toLowerCase().includes(searchQuery.toLowerCase());
+                                if (!titleMatch && !nameMatch) return false;
+                            }
                             return true;
                         })
                         .map(t => ({ ...t, employee: emp }));

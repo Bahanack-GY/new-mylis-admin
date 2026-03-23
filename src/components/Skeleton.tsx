@@ -108,20 +108,20 @@ const NotifList = ({ count = 8 }: { count?: number }) => (
    ═══════════════════════════════════════════════════ */
 
 export const DashboardSkeleton = () => (
-    <div className="space-y-6">
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 flex items-center justify-between">
+    <div className="space-y-8">
+        <div className="flex items-center justify-between">
             <div className="space-y-2">
-                <Bone className="h-7 w-48" />
-                <Bone className="h-4 w-64" />
+                <Bone className="h-8 w-48" />
+                <Bone className="h-4 w-56" />
             </div>
             <Bone className="h-10 w-36 rounded-xl" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, i) => <StatCard key={i} />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2"><ChartBox height="h-64" /></div>
-            <ChartBox height="h-64" />
+            <div className="lg:col-span-2"><ChartBox height="h-72" /></div>
+            <ChartBox height="h-72" />
         </div>
     </div>
 );

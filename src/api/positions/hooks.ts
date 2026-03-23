@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { positionsApi } from './api';
 import type { CreatePositionDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const positionKeys = {
     all: ['positions'] as const,
@@ -26,10 +27,10 @@ export const useCreatePosition = () => {
     return useMutation({
         mutationFn: (dto: CreatePositionDto) => positionsApi.create(dto),
         onSuccess: () => {
-            toast.success('Position created');
+            toast.success(i18n.t('toast.positionCreated'));
             qc.invalidateQueries({ queryKey: positionKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -39,10 +40,10 @@ export const useUpdatePosition = () => {
         mutationFn: ({ id, dto }: { id: string; dto: Partial<CreatePositionDto> }) =>
             positionsApi.update(id, dto),
         onSuccess: () => {
-            toast.success('Position updated');
+            toast.success(i18n.t('toast.positionUpdated'));
             qc.invalidateQueries({ queryKey: positionKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -51,9 +52,9 @@ export const useDeletePosition = () => {
     return useMutation({
         mutationFn: (id: string) => positionsApi.delete(id),
         onSuccess: () => {
-            toast.success('Position deleted');
+            toast.success(i18n.t('toast.positionDeleted'));
             qc.invalidateQueries({ queryKey: positionKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

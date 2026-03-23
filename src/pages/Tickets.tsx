@@ -342,15 +342,15 @@ const TicketDetailModal = ({ ticket, onClose }: { ticket: TicketItem; onClose: (
             >
                 {/* Header */}
                 <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                         <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                             style={{ backgroundColor: `${STATUS_COLORS[ticket.status]}15` }}
                         >
                             <CatIcon size={20} style={{ color: STATUS_COLORS[ticket.status] }} />
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-gray-800">{ticket.title}</h2>
+                        <div className="min-w-0">
+                            <h2 className="text-lg font-bold text-gray-800 truncate">{ticket.title}</h2>
                             <p className="text-xs text-gray-400">#{ticket.id.slice(0, 8)}</p>
                         </div>
                     </div>
@@ -387,7 +387,7 @@ const TicketDetailModal = ({ ticket, onClose }: { ticket: TicketItem; onClose: (
                     {ticket.description && (
                         <div>
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{t('tickets.create.description')}</p>
-                            <p className="text-sm text-gray-600 leading-relaxed">{ticket.description}</p>
+                            <p className="text-sm text-gray-600 leading-relaxed break-words">{ticket.description}</p>
                         </div>
                     )}
 
@@ -1005,6 +1005,12 @@ const Tickets = () => {
                 <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
                     <TicketIcon size={48} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-400 font-medium">{t('tickets.noResults')}</p>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="mt-4 px-4 py-2 bg-[#33cbcc] text-white text-sm font-semibold rounded-xl hover:bg-[#2bb5b6] transition-colors"
+                    >
+                        {t('tickets.create.submit')}
+                    </button>
                 </div>
             )}
 

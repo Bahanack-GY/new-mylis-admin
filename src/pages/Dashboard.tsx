@@ -10,14 +10,15 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  BarChart,
+  Bar,
 } from 'recharts';
 import {
   Users,
   Briefcase,
   CheckCircle,
   TrendingUp,
-  MoreHorizontal,
   DollarSign,
   CreditCard,
   Coins,
@@ -31,7 +32,7 @@ import { useEmployees } from '../api/employees/hooks';
 import { useProjects } from '../api/projects/hooks';
 import { useTasks } from '../api/tasks/hooks';
 import { useDepartments } from '../api/departments/hooks';
-import { useInvoiceStats } from '../api/invoices/hooks';
+import { useInvoiceStats, useRevenueByDepartment } from '../api/invoices/hooks';
 import { useExpenseStats } from '../api/expenses/hooks';
 import { useDepartmentScope } from '../contexts/AuthContext';
 import { DashboardSkeleton } from '../components/Skeleton';
@@ -94,6 +95,7 @@ const Dashboard = () => {
   const { data: apiDepartments, isLoading: loadingDepartments } = useDepartments();
   const { data: invoiceStats } = useInvoiceStats(deptScope, from, to);
   const { data: expenseStats } = useExpenseStats();
+  const { data: revenueByDept } = useRevenueByDepartment(from, to);
 
   const isLoading = loadingEmployees || loadingProjects || loadingTasks || loadingDepartments;
 
@@ -111,14 +113,14 @@ const Dashboard = () => {
   const pending = invoiceStats?.totalPending ?? 0;
 
   const stats = [
-    { title: t('dashboard.stats.totalEmployees'), value: String(totalEmployees), change: '+0%', icon: Users, color: '#283852', link: '/employees' },
-    { title: t('dashboard.stats.activeProjects'), value: String(activeProjects), change: '+0%', icon: Briefcase, color: '#314463', link: '/projects' },
-    { title: t('dashboard.stats.tasksCompleted'), value: String(tasksCompleted), change: '+0%', icon: CheckCircle, color: '#3a5175', link: '/tasks' },
-    { title: t('dashboard.stats.efficiency'), value: `${efficiency}%`, change: '+0%', icon: TrendingUp, color: '#445d86' },
-    { title: t('dashboard.stats.revenue'), value: formatFCFA(revenue), change: '+0%', icon: DollarSign, color: '#4d6a98' },
-    { title: t('dashboard.stats.expenses'), value: formatFCFA(totalExpenses), change: '+0%', icon: CreditCard, color: '#5676a9', link: '/expenses' },
-    { title: t('dashboard.stats.profit'), value: formatFCFA(profit), change: profit >= 0 ? '+0%' : '-0%', icon: Coins, color: '#6083bb' },
-    { title: t('dashboard.stats.pending'), value: formatFCFA(pending), change: '+0%', icon: Clock, color: '#698fcc' },
+    { title: t('dashboard.stats.totalEmployees'), value: String(totalEmployees), icon: Users, color: '#283852', link: '/employees' },
+    { title: t('dashboard.stats.activeProjects'), value: String(activeProjects), icon: Briefcase, color: '#314463', link: '/projects' },
+    { title: t('dashboard.stats.tasksCompleted'), value: String(tasksCompleted), icon: CheckCircle, color: '#3a5175', link: '/tasks' },
+    { title: t('dashboard.stats.efficiency'), value: `${efficiency}%`, icon: TrendingUp, color: '#445d86' },
+    { title: t('dashboard.stats.revenue'), value: formatFCFA(revenue), icon: DollarSign, color: '#4d6a98' },
+    { title: t('dashboard.stats.expenses'), value: formatFCFA(totalExpenses), icon: CreditCard, color: '#5676a9', link: '/expenses' },
+    { title: t('dashboard.stats.profit'), value: formatFCFA(profit), icon: Coins, color: profit >= 0 ? '#22c55e' : '#f43f5e' },
+    { title: t('dashboard.stats.pending'), value: formatFCFA(pending), icon: Clock, color: '#698fcc' },
   ];
 
   // Derive chart data from real tasks grouped by day of week
@@ -255,16 +257,16 @@ const Dashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             onClick={stat.link ? () => navigate(stat.link) : undefined}
-            className={`bg-white p-6 rounded-2xl border border-gray-100 transition-colors relative overflow-hidden group hover:border-[#33cbcc]/50${stat.link ? ' cursor-pointer' : ''}`}
+            onKeyDown={stat.link ? (e) => { if (e.key === 'Enter' || e.key === ' ') navigate(stat.link); } : undefined}
+            tabIndex={stat.link ? 0 : undefined}
+            role={stat.link ? 'button' : undefined}
+            className={`bg-white p-6 rounded-2xl border border-gray-100 transition-all duration-200 relative overflow-hidden group hover:border-[#33cbcc]/50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#33cbcc]/40${stat.link ? ' cursor-pointer' : ''}`}
           >
             <div className="relative z-10">
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-gray-500 text-sm font-medium">{stat.title}</h3>
-                    <span className={`text-xs font-semibold ${stat.change.startsWith('+') ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50'} px-2 py-1 rounded-full`}>
-                        {stat.change}
-                    </span>
-                </div>
-                <h2 className="text-3xl font-bold text-gray-800 mt-2">{stat.value}</h2>
+                <h3 className="text-gray-500 text-sm font-medium mb-2 truncate">{stat.title}</h3>
+                <h2 className={`font-bold text-gray-800 truncate leading-tight ${stat.value.length > 10 ? 'text-xl' : 'text-3xl'}`}>
+                  {stat.value}
+                </h2>
             </div>
 
             <div
@@ -278,97 +280,188 @@ const Dashboard = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Chart */}
         <motion.div
            initial={{ opacity: 0, scale: 0.95 }}
            animate={{ opacity: 1, scale: 1 }}
            transition={{ delay: 0.4 }}
-           className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100"
+           className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100"
         >
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800">{t('dashboard.charts.productivity')}</h3>
-            <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-400">
-               <MoreHorizontal size={20} />
-            </button>
+          <div className="mb-6">
+            <h3 className="text-base font-bold text-gray-800">{t('dashboard.charts.productivity')}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{t('dashboard.dateFilter.' + datePreset, currentLabel)}</p>
           </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#33cbcc" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#33cbcc" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF'}} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF'}} />
-                <CartesianGrid vertical={false} stroke="#E5E7EB" strokeDasharray="3 3"/>
-                <Tooltip
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                  cursor={{ stroke: '#33cbcc', strokeWidth: 2 }}
-                />
-                <Area type="monotone" dataKey="tasks" stroke="#33cbcc" strokeWidth={3} fillOpacity={1} fill="url(#colorTasks)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-[280px] w-full">
+            {chartData.every(d => d.tasks === 0) ? (
+              <div className="flex flex-col items-center justify-center h-full gap-2">
+                <CheckCircle size={32} className="text-gray-200" />
+                <p className="text-sm text-gray-400">{t('dashboard.charts.noTasks', 'No tasks in this period')}</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#33cbcc" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#33cbcc" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#9CA3AF', fontSize: 12}} allowDecimals={false} />
+                  <CartesianGrid vertical={false} stroke="#F3F4F6" strokeDasharray="4 4"/>
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
+                    cursor={{ stroke: '#33cbcc', strokeWidth: 1.5, strokeDasharray: '4 4' }}
+                  />
+                  <Area type="monotone" dataKey="tasks" stroke="#33cbcc" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTasks)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 
-        {/* Side Chart (Money Flow / Distribution) */}
+        {/* Side Chart — Department headcount distribution */}
         <motion.div
            initial={{ opacity: 0, scale: 0.95 }}
            animate={{ opacity: 1, scale: 1 }}
            transition={{ delay: 0.5 }}
-           className="bg-white p-6 rounded-3xl border border-gray-100 flex flex-col"
+           className="bg-white p-6 rounded-2xl border border-gray-100 flex flex-col"
         >
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800">{t('dashboard.charts.distribution')}</h3>
-            <button className="p-2 hover:bg-gray-100 rounded-lg text-gray-400">
-               <MoreHorizontal size={20} />
-            </button>
+          <div className="mb-6">
+            <h3 className="text-base font-bold text-gray-800">{t('dashboard.charts.distribution')}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{t('dashboard.charts.total')} · {pieTotal}</p>
           </div>
-          <div className="flex-1 min-h-[250px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pieData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Center Text */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center">
-                 <p className="text-xs text-gray-400 font-medium">{t('dashboard.charts.total')}</p>
-                 <p className="text-2xl font-bold text-gray-800">{pieTotal}</p>
-              </div>
+          {pieTotal === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2">
+              <Users size={32} className="text-gray-200" />
+              <p className="text-sm text-gray-400">{t('dashboard.charts.noDepartments', 'No departments yet')}</p>
             </div>
-          </div>
-
-          <div className="mt-6 space-y-3">
-             {pieData.map((entry, index) => (
-               <div key={index} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                     <span className="text-gray-600">{entry.name}</span>
+          ) : (
+            <>
+              <div className="flex-1 min-h-[200px] relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={56}
+                      outerRadius={76}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {pieData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}
+                      formatter={(v: number | undefined) => [`${v ?? 0} ${(v ?? 0) === 1 ? t('dashboard.charts.employee', 'employee') : t('dashboard.charts.employees', 'employees')}`, ''] as [string, string]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-gray-800">{pieTotal}</p>
+                    <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-0.5">{t('dashboard.charts.people', 'people')}</p>
                   </div>
-                  <span className="font-semibold text-gray-800">{pieTotal > 0 ? Math.round((entry.value / pieTotal) * 100) : 0}%</span>
-               </div>
-             ))}
-          </div>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2.5">
+                {pieData.slice(0, 5).map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                      <span className="text-gray-600 truncate text-xs">{entry.name}</span>
+                    </div>
+                    <span className="font-semibold text-gray-700 text-xs shrink-0">{pieTotal > 0 ? Math.round((entry.value / pieTotal) * 100) : 0}%</span>
+                  </div>
+                ))}
+                {pieData.length > 5 && (
+                  <p className="text-[11px] text-gray-400 pl-4">+{pieData.length - 5} more</p>
+                )}
+              </div>
+            </>
+          )}
         </motion.div>
       </div>
+
+      {/* Revenue by Department */}
+      {revenueByDept && revenueByDept.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.6 }}
+          className="bg-white p-6 rounded-2xl border border-gray-100"
+        >
+          <div className="mb-6">
+            <h3 className="text-base font-bold text-gray-800">{t('dashboard.charts.revenueByDepartment', 'Revenue by Department')}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{t('dashboard.charts.paidInvoices', 'Paid invoices only')}</p>
+          </div>
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={revenueByDept}
+                margin={{ top: 4, right: 24, left: 0, bottom: 4 }}
+                barCategoryGap="30%"
+              >
+                <defs>
+                  <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#33cbcc" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#33cbcc" stopOpacity={0.5} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="#E5E7EB" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="department"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#6B7280', fontSize: 12 }}
+                  interval={0}
+                  tickFormatter={(v: string) => v.length > 12 ? v.slice(0, 12) + '…' : v}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                  tickFormatter={(v: number) =>
+                    v >= 1_000_000
+                      ? (v / 1_000_000).toFixed(1) + 'M'
+                      : v >= 1_000
+                      ? (v / 1_000).toFixed(0) + 'k'
+                      : String(v)
+                  }
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                  cursor={{ fill: '#f3f4f6' }}
+                  formatter={(value: number | undefined) => [formatFCFA(value ?? 0), t('dashboard.stats.revenue')]}
+                />
+                <Bar dataKey="revenue" fill="url(#barGrad)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Department legend with values */}
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {revenueByDept.map((d, i) => (
+              <div key={d.departmentId} className="flex items-center gap-2 min-w-0">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                <span className="text-xs text-gray-500 truncate">{d.department}</span>
+                <span className="ml-auto text-xs font-semibold text-gray-700 shrink-0 whitespace-nowrap">
+                  {d.revenue >= 1_000_000
+                    ? (d.revenue / 1_000_000).toFixed(1) + 'M'
+                    : d.revenue >= 1_000
+                    ? (d.revenue / 1_000).toFixed(0) + 'k'
+                    : d.revenue.toFixed(0)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Recents Table Section */}
     </div>

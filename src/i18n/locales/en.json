@@ -419,7 +419,85 @@
     "settings": "Settings",
     "messages": "Messages",
     "demands": "Demands",
-    "logout": "Logout"
+    "salaries": "Salaries",
+    "logout": "Logout",
+    "sections": {
+      "work": "Work",
+      "people": "People",
+      "finance": "Finance",
+      "comms": "Comms"
+    }
+  },
+  "salaries": {
+    "pageSubtitle": "{{count}} employees · {{withSalary}} with salary set",
+    "payAll": "Pay All Salaries",
+    "totalMonthly": "Total Monthly",
+    "employees": "Employees",
+    "averageSalary": "Average Salary",
+    "employeeSalaries": "Employee Salaries",
+    "search": "Search...",
+    "loading": "Loading…",
+    "noEmployees": "No employees found",
+    "notSet": "Not set",
+    "columns": {
+      "employee": "Employee",
+      "department": "Department",
+      "role": "Role",
+      "monthlySalary": "Monthly Salary",
+      "actions": "Actions"
+    },
+    "roles": {
+      "EMPLOYEE": "Employee",
+      "MANAGER": "Manager",
+      "HEAD_OF_DEPARTMENT": "Head of Dept.",
+      "ACCOUNTANT": "Accountant"
+    },
+    "months": {
+      "1": "January",
+      "2": "February",
+      "3": "March",
+      "4": "April",
+      "5": "May",
+      "6": "June",
+      "7": "July",
+      "8": "August",
+      "9": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December"
+    },
+    "payOne": {
+      "title": "Pay Salary",
+      "month": "Month",
+      "year": "Year",
+      "cancel": "Cancel",
+      "pay": "Pay",
+      "processing": "Processing…"
+    },
+    "advance": {
+      "title": "Salary Advance",
+      "amount": "Amount (FCFA)",
+      "note": "Note (optional)",
+      "notePlaceholder": "Reason for advance…",
+      "monthlySalary": "Monthly salary: {{amount}} FCFA",
+      "cancel": "Cancel",
+      "payAdvance": "Pay Advance",
+      "processing": "Processing…"
+    },
+    "bulkPay": {
+      "title": "Pay All Salaries",
+      "subtitle": "{{count}} employees · {{total}} FCFA total",
+      "month": "Month",
+      "year": "Year",
+      "warning": "This will create an expense record for each employee and count toward the {{month}} {{year}} expenses.",
+      "cancel": "Cancel",
+      "confirm": "Confirm Payment",
+      "processing": "Processing…"
+    },
+    "row": {
+      "pay": "Pay",
+      "advance": "Advance"
+    }
   },
   "header": {
     "searchPlaceholder": "Search Here...",
@@ -1494,5 +1572,11 @@
     "loginFailed": "Login failed. Check your credentials.",
     "accessDenied": "Access denied: insufficient permissions",
     "accountCreated": "Account created"
+  },
+  "httpErrors": {
+    "network": "Connection error — check your internet and try again",
+    "serverError": "Server error — please try again in a moment",
+    "rateLimit": "Too many requests — please slow down",
+    "forbidden": "You don't have permission to do that"
   }
 }

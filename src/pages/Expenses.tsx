@@ -27,6 +27,7 @@ export default function Expenses() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [page, setPage] = useState(1);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const { data: expensesPage, isLoading: expLoading } = useExpenses(page);
     const expenses = expensesPage?.data ?? [];
@@ -89,16 +90,16 @@ export default function Expenses() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Dépenses</h1>
                     <p className="text-sm text-gray-500 mt-1">Gérez et analysez vos charges d'entreprise</p>
                 </div>
                 <button
                     onClick={() => { setEditingExpense(null); setIsModalOpen(true); }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#33cbcc] to-[#2bb5b6] text-white rounded-xl font-medium shadow-lg shadow-[#33cbcc]/20 hover:shadow-[#33cbcc]/40 transition-all hover:-translate-y-0.5"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#33cbcc] text-white rounded-xl text-sm font-semibold hover:bg-[#2bb5b6] transition-colors shadow-sm shadow-[#33cbcc]/20"
                 >
-                    <Plus size={18} />
+                    <Plus size={16} />
                     Nouvelle Dépense
                 </button>
             </div>
@@ -375,32 +376,64 @@ export default function Expenses() {
                                     </td>
                                     <td className="px-2">
                                         <div className="flex justify-center items-center gap-1 h-[72px] border-l border-transparent group-hover:border-gray-100 group-hover:bg-gray-100/50 transition-colors">
-                                            <button
-                                                onClick={() => handleEdit(expense)}
-                                                className="p-2 text-gray-400 hover:text-[#33cbcc] hover:bg-[#33cbcc]/10 rounded-lg transition-colors"
-                                                title="Modifier"
-                                            >
-                                                <Pencil size={15} />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (window.confirm('Supprimer cette dépense ?')) {
-                                                        deleteExpense.mutate(expense.id);
-                                                    }
-                                                }}
-                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Supprimer"
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
+                                            {confirmDeleteId === expense.id ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => { deleteExpense.mutate(expense.id); setConfirmDeleteId(null); }}
+                                                        className="p-1.5 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors text-[10px] font-semibold px-2"
+                                                        title="Confirmer"
+                                                    >
+                                                        ✓
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setConfirmDeleteId(null)}
+                                                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-[10px] font-semibold px-2"
+                                                        title="Annuler"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleEdit(expense)}
+                                                        className="p-2 text-gray-400 hover:text-[#33cbcc] hover:bg-[#33cbcc]/10 rounded-lg transition-colors"
+                                                        title="Modifier"
+                                                    >
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setConfirmDeleteId(expense.id)}
+                                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Supprimer"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
                             ))}
                             {filteredExpenses.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500 bg-gray-50/30">
-                                        Aucune dépense trouvée.
+                                    <td colSpan={6} className="px-6 py-16 text-center bg-gray-50/30">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                                <FileText size={18} className="text-gray-400" />
+                                            </div>
+                                            <p className="text-sm font-medium text-gray-500">
+                                                {search ? 'Aucun résultat pour « ' + search + ' »' : 'Aucune dépense enregistrée'}
+                                            </p>
+                                            {!search && (
+                                                <button
+                                                    onClick={() => { setEditingExpense(null); setIsModalOpen(true); }}
+                                                    className="text-xs font-semibold text-[#33cbcc] hover:text-[#2bb5b6] transition-colors"
+                                                >
+                                                    + Ajouter la première dépense
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             )}

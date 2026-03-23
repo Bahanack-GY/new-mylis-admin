@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { entretiensApi } from './api';
 import type { CreateEntretienDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const entretienKeys = {
     all: ['entretiens'] as const,
@@ -26,9 +27,9 @@ export const useCreateEntretien = () => {
     return useMutation({
         mutationFn: (dto: CreateEntretienDto) => entretiensApi.create(dto),
         onSuccess: () => {
-            toast.success('Interview scheduled');
+            toast.success(i18n.t('toast.interviewScheduled'));
             qc.invalidateQueries({ queryKey: entretienKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };

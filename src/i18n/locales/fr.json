@@ -419,7 +419,85 @@
     "settings": "Paramètres",
     "messages": "Messages",
     "demands": "Demandes",
-    "logout": "Déconnexion"
+    "salaries": "Salaires",
+    "logout": "Déconnexion",
+    "sections": {
+      "work": "Travail",
+      "people": "Équipe",
+      "finance": "Finance",
+      "comms": "Comms"
+    }
+  },
+  "salaries": {
+    "pageSubtitle": "{{count}} employés · {{withSalary}} avec salaire défini",
+    "payAll": "Payer tous les salaires",
+    "totalMonthly": "Total mensuel",
+    "employees": "Employés",
+    "averageSalary": "Salaire moyen",
+    "employeeSalaries": "Salaires des employés",
+    "search": "Rechercher...",
+    "loading": "Chargement…",
+    "noEmployees": "Aucun employé trouvé",
+    "notSet": "Non défini",
+    "columns": {
+      "employee": "Employé",
+      "department": "Département",
+      "role": "Rôle",
+      "monthlySalary": "Salaire mensuel",
+      "actions": "Actions"
+    },
+    "roles": {
+      "EMPLOYEE": "Employé",
+      "MANAGER": "Manager",
+      "HEAD_OF_DEPARTMENT": "Chef de dept.",
+      "ACCOUNTANT": "Comptable"
+    },
+    "months": {
+      "1": "Janvier",
+      "2": "Février",
+      "3": "Mars",
+      "4": "Avril",
+      "5": "Mai",
+      "6": "Juin",
+      "7": "Juillet",
+      "8": "Août",
+      "9": "Septembre",
+      "10": "Octobre",
+      "11": "Novembre",
+      "12": "Décembre"
+    },
+    "payOne": {
+      "title": "Payer le salaire",
+      "month": "Mois",
+      "year": "Année",
+      "cancel": "Annuler",
+      "pay": "Payer",
+      "processing": "Traitement…"
+    },
+    "advance": {
+      "title": "Avance sur salaire",
+      "amount": "Montant (FCFA)",
+      "note": "Note (optionnelle)",
+      "notePlaceholder": "Motif de l'avance…",
+      "monthlySalary": "Salaire mensuel : {{amount}} FCFA",
+      "cancel": "Annuler",
+      "payAdvance": "Payer l'avance",
+      "processing": "Traitement…"
+    },
+    "bulkPay": {
+      "title": "Payer tous les salaires",
+      "subtitle": "{{count}} employés · {{total}} FCFA au total",
+      "month": "Mois",
+      "year": "Année",
+      "warning": "Cela créera une dépense pour chaque employé et sera comptabilisé dans les dépenses de {{month}} {{year}}.",
+      "cancel": "Annuler",
+      "confirm": "Confirmer le paiement",
+      "processing": "Traitement…"
+    },
+    "row": {
+      "pay": "Payer",
+      "advance": "Avance"
+    }
   },
   "header": {
     "searchPlaceholder": "Rechercher ici...",
@@ -1494,5 +1572,11 @@
     "loginFailed": "Identifiants incorrects.",
     "accessDenied": "Accès refusé : permissions insuffisantes",
     "accountCreated": "Compte créé"
+  },
+  "httpErrors": {
+    "network": "Erreur de connexion — vérifiez votre internet et réessayez",
+    "serverError": "Erreur serveur — veuillez réessayer dans un instant",
+    "rateLimit": "Trop de requêtes — veuillez ralentir",
+    "forbidden": "Vous n'avez pas la permission de faire cela"
   }
 }

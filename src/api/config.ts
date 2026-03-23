@@ -1,12 +1,12 @@
 import axios from 'axios';
+import { toast } from 'sonner';
+import i18n from '../i18n/config';
 
-// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API_URL = "https://api.mylisapp.online/"
-// const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
 
 const api = axios.create({
     baseURL: API_URL,
+    timeout: 20000,
     headers: { 'Content-Type': 'application/json' },
 });
 
@@ -19,14 +19,31 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Handle 401 responses globally
+// Global response error handling
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        const status = error.response?.status;
+
+        if (status === 401) {
             localStorage.removeItem('access_token');
             window.location.href = '/login';
+            return Promise.reject(error);
         }
+
+        if (status === 403) {
+            toast.error(i18n.t('toast.accessDenied'));
+        } else if (status === 404) {
+            // 404s are often expected (optional data), let hooks handle them
+        } else if (status === 429) {
+            toast.error(i18n.t('httpErrors.rateLimit'));
+        } else if (status >= 500) {
+            toast.error(i18n.t('httpErrors.serverError'));
+        } else if (!error.response) {
+            // Network error / timeout
+            toast.error(i18n.t('httpErrors.network'));
+        }
+
         return Promise.reject(error);
     },
 );

@@ -13,12 +13,32 @@ export const useChannels = () => {
         queryFn: chatApi.getChannels,
     });
 
-    // Update channels when new messages arrive
+    // Update only the affected channel instead of refetching all channels on every message.
     useEffect(() => {
         if (!socket) return;
 
-        const handleNewMessage = () => {
-            queryClient.invalidateQueries({ queryKey: ['chat', 'channels'] });
+        const handleNewMessage = (message: ChatMessage) => {
+            queryClient.setQueryData(
+                ['chat', 'channels'],
+                (old: Channel[] | undefined) => {
+                    if (!old) return old;
+                    return old
+                        .map(c => c.id !== message.channelId ? c : {
+                            ...c,
+                            lastMessage: {
+                                content: message.content,
+                                createdAt: message.createdAt,
+                                senderName: `${message.sender.firstName} ${message.sender.lastName}`.trim() || 'Unknown',
+                            },
+                            unreadCount: c.unreadCount + 1,
+                        })
+                        .sort((a, b) => {
+                            const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+                            const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+                            return bTime - aTime;
+                        });
+                },
+            );
         };
 
         socket.on('message:new', handleNewMessage);

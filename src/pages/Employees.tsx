@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import i18n from '../i18n/config';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -50,7 +52,7 @@ const SKILLS = [
 
 /* ─── Create Employee Modal ────────────────────────────── */
 
-const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = false }: { onClose: () => void; managerMode?: boolean; accountantMode?: boolean }) => {
+const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = false, hodDepartmentId }: { onClose: () => void; managerMode?: boolean; accountantMode?: boolean; hodDepartmentId?: string }) => {
     const { t } = useTranslation();
     const createEmployee = useCreateEmployee();
     const { data: apiDepartments } = useDepartments();
@@ -86,6 +88,13 @@ const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = fa
         document.body.style.overflow = 'hidden';
         return () => { document.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
     }, [onClose]);
+
+    useEffect(() => {
+        if (hodDepartmentId && apiDepartments) {
+            const dept = apiDepartments.find(d => d.id === hodDepartmentId);
+            if (dept) setForm(prev => ({ ...prev, department: dept.name }));
+        }
+    }, [hodDepartmentId, apiDepartments]);
 
     const handleAvatarChange = useCallback((file: File | null) => {
         if (!file) return;
@@ -411,6 +420,7 @@ const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = fa
                                     value={form.department}
                                     onChange={e => setForm(prev => ({ ...prev, department: e.target.value }))}
                                     className={inputCls}
+                                    disabled={!!hodDepartmentId}
                                 >
                                     <option value="">{t('employees.create.departmentPlaceholder')}</option>
                                     {(apiDepartments || []).map(d => (
@@ -585,13 +595,13 @@ const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = fa
                                             </button>
                                         </div>
                                         <label className="flex items-center gap-2 cursor-pointer group/file">
-                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all max-w-[220px] ${
                                                 doc.file
                                                     ? 'bg-green-50 text-green-600 border border-green-200'
                                                     : 'bg-white text-gray-500 border border-gray-200 hover:border-[#33cbcc]/30'
                                             }`}>
-                                                {doc.file ? <CheckCircle size={12} /> : <Upload size={12} />}
-                                                {doc.file ? doc.file.name : t('employees.create.chooseFile')}
+                                                {doc.file ? <CheckCircle size={12} className="shrink-0" /> : <Upload size={12} className="shrink-0" />}
+                                                <span className="truncate max-w-[160px] inline-block">{doc.file ? doc.file.name : t('employees.create.chooseFile')}</span>
                                             </div>
                                             <input
                                                 type="file"
@@ -655,13 +665,13 @@ const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = fa
                                             </button>
                                         </div>
                                         <label className="flex items-center gap-2 cursor-pointer group/file">
-                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all max-w-[220px] ${
                                                 doc.file
                                                     ? 'bg-green-50 text-green-600 border border-green-200'
                                                     : 'bg-white text-gray-500 border border-gray-200 hover:border-[#33cbcc]/30'
                                             }`}>
-                                                {doc.file ? <CheckCircle size={12} /> : <Upload size={12} />}
-                                                {doc.file ? doc.file.name : t('employees.create.chooseFile')}
+                                                {doc.file ? <CheckCircle size={12} className="shrink-0" /> : <Upload size={12} className="shrink-0" />}
+                                                <span className="truncate max-w-[160px] inline-block">{doc.file ? doc.file.name : t('employees.create.chooseFile')}</span>
                                             </div>
                                             <input
                                                 type="file"
@@ -733,6 +743,7 @@ const CreateEmployeeModal = ({ onClose, managerMode = false, accountantMode = fa
                             } catch (error) {
                                 console.error('Failed to upload documents:', error);
                                 setIsUploading(false);
+                                toast.error(i18n.t('toast.error'));
                             }
                         }}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors ${
@@ -761,8 +772,9 @@ const Employees = () => {
     const [showManagerModal, setShowManagerModal] = useState(false);
     const [showAccountantModal, setShowAccountantModal] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [showDismissed, setShowDismissed] = useState(false);
     const deptScope = useDepartmentScope();
-    const { role } = useAuth();
+    const { role, departmentId } = useAuth();
     const isManager = role === 'MANAGER';
     const { data: apiEmployees, isLoading } = useEmployees(deptScope);
     const { data: apiDepartments } = useDepartments();
@@ -776,13 +788,17 @@ const Employees = () => {
         departmentName: emp.department?.name || '',
         avatar: emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.firstName + '+' + emp.lastName)}&background=33cbcc&color=fff`,
         color: i % 2 === 0 ? '#33cbcc' : '#283852',
+        dismissed: emp.dismissed || false,
     }));
 
-    const employees = allEmployees.filter(emp => {
+    const filterFn = (emp: typeof allEmployees[0]) => {
         const matchesSearch = !searchQuery || emp.name.toLowerCase().includes(searchQuery.toLowerCase()) || emp.role.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesDept = !selectedDepartment || emp.departmentId === selectedDepartment;
         return matchesSearch && matchesDept;
-    });
+    };
+
+    const employees = allEmployees.filter(emp => !emp.dismissed && filterFn(emp));
+    const dismissedEmployees = allEmployees.filter(emp => emp.dismissed && filterFn(emp));
 
     return (
         <div className="space-y-8 ">
@@ -1004,15 +1020,118 @@ const Employees = () => {
                         </motion.div>
                     ))}
                     {employees.length === 0 && !isLoading && (
-                        <div className="py-12 text-center text-gray-400 text-sm">{t('employees.searchPlaceholder')}</div>
+                        <div className="py-12 text-center text-gray-400 text-sm">
+                            <p>{t('employees.searchPlaceholder')}</p>
+                            {role !== 'ACCOUNTANT' && (
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="mt-4 px-4 py-2 bg-[#33cbcc] text-white text-sm font-semibold rounded-xl hover:bg-[#2bb5b6] transition-colors"
+                                >
+                                    {t('employees.addEmployee')}
+                                </button>
+                            )}
+                        </div>
                     )}
+                </div>
+            )}
+
+            {/* Dismissed Employees Section */}
+            {dismissedEmployees.length > 0 && (
+                <div>
+                    <button
+                        onClick={() => setShowDismissed(v => !v)}
+                        className="flex items-center gap-3 w-full text-left mb-4 group"
+                    >
+                        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-red-500 text-sm font-semibold hover:bg-red-100 transition-colors">
+                            <UserPlus size={15} className="rotate-45" />
+                            {t('employees.dismissed', 'Dismissed / Suspended')}
+                            <span className="bg-red-100 text-red-500 px-2 py-0.5 rounded-full text-xs font-bold">
+                                {dismissedEmployees.length}
+                            </span>
+                            <motion.span
+                                animate={{ rotate: showDismissed ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="ml-1"
+                            >
+                                ▾
+                            </motion.span>
+                        </div>
+                    </button>
+
+                    <AnimatePresence>
+                        {showDismissed && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.25 }}
+                                className="overflow-hidden"
+                            >
+                                {viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {dismissedEmployees.map((employee, index) => (
+                                            <motion.div
+                                                key={employee.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.05 }}
+                                                onClick={() => navigate(`/employees/${employee.id}`)}
+                                                className="bg-white rounded-3xl p-8 border border-red-100 group relative overflow-hidden cursor-pointer hover:border-red-200 transition-all opacity-70 grayscale-[40%]"
+                                            >
+                                                <div className="absolute top-3 right-3 px-2 py-1 bg-red-50 text-red-400 text-[10px] font-bold rounded-lg uppercase tracking-wide">
+                                                    {t('employees.dismissedBadge', 'Dismissed')}
+                                                </div>
+                                                <div className="flex flex-col items-center text-center">
+                                                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-red-100 mb-4">
+                                                        <img src={employee.avatar} alt={employee.name} className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <h3 className="text-xl font-bold text-gray-500">{employee.name}</h3>
+                                                    <p className="text-gray-400 text-sm mt-1">{employee.role}</p>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-3xl border border-red-100 overflow-hidden divide-y divide-red-50">
+                                        {dismissedEmployees.map((employee, index) => (
+                                            <motion.div
+                                                key={employee.id}
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: index * 0.04 }}
+                                                onClick={() => navigate(`/employees/${employee.id}`)}
+                                                className="flex items-center gap-4 px-6 py-4 hover:bg-red-50/40 cursor-pointer transition-colors group opacity-70"
+                                            >
+                                                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-red-100 shrink-0 grayscale">
+                                                    <img src={employee.avatar} alt={employee.name} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-gray-500">{employee.name}</p>
+                                                    <p className="text-xs text-gray-400">{employee.role}</p>
+                                                </div>
+                                                {employee.departmentName && (
+                                                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-400 shrink-0">
+                                                        {employee.departmentName}
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-red-50 text-red-400 uppercase tracking-wide shrink-0">
+                                                    {t('employees.dismissedBadge', 'Dismissed')}
+                                                </span>
+                                                <ArrowUpRight size={16} className="text-gray-300 group-hover:text-red-400 transition-colors shrink-0" />
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             )}
 
             {/* Modals */}
             <AnimatePresence>
                 {showCreateModal && (
-                    <CreateEmployeeModal onClose={() => setShowCreateModal(false)} />
+                    <CreateEmployeeModal onClose={() => setShowCreateModal(false)} hodDepartmentId={role === 'HEAD_OF_DEPARTMENT' ? (departmentId ?? undefined) : undefined} />
                 )}
                 {showManagerModal && (
                     <CreateEmployeeModal onClose={() => setShowManagerModal(false)} managerMode />

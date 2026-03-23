@@ -573,11 +573,11 @@ const InvoiceDetailModal = ({ invoice, onClose }: { invoice: Invoice; onClose: (
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('invoices.table.project')}</p>
-                            <p className="text-sm font-medium text-gray-800 mt-1">{invoice.project?.name || '—'}</p>
+                            <p className="text-sm font-medium text-gray-800 mt-1 truncate">{invoice.project?.name || '—'}</p>
                         </div>
                         <div>
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('invoices.table.client')}</p>
-                            <p className="text-sm font-medium text-gray-800 mt-1">{invoice.client?.name || '—'}</p>
+                            <p className="text-sm font-medium text-gray-800 mt-1 truncate">{invoice.client?.name || '—'}</p>
                         </div>
                         <div>
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t('invoices.detail.issuedOn')}</p>

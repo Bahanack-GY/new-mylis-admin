@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketsApi } from './api';
 import type { CreateTicketDto, TakeTicketDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const ticketKeys = {
     all: ['tickets'] as const,
@@ -33,10 +34,10 @@ export const useCreateTicket = () => {
     return useMutation({
         mutationFn: (dto: CreateTicketDto) => ticketsApi.create(dto),
         onSuccess: () => {
-            toast.success('Ticket created');
+            toast.success(i18n.t('toast.ticketCreated'));
             qc.invalidateQueries({ queryKey: ticketKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -46,10 +47,13 @@ export const useTakeTicket = () => {
         mutationFn: ({ id, dto }: { id: string; dto: TakeTicketDto }) =>
             ticketsApi.take(id, dto),
         onSuccess: () => {
-            toast.success('Ticket accepted');
+            toast.success(i18n.t('toast.ticketAccepted'));
             qc.invalidateQueries({ queryKey: ticketKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => {
+            toast.error(i18n.t('toast.error'));
+            qc.invalidateQueries({ queryKey: ticketKeys.all });
+        },
     });
 };
 
@@ -58,9 +62,12 @@ export const useCloseTicket = () => {
     return useMutation({
         mutationFn: (id: string) => ticketsApi.close(id),
         onSuccess: () => {
-            toast.success('Ticket closed');
+            toast.success(i18n.t('toast.ticketClosed'));
             qc.invalidateQueries({ queryKey: ticketKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => {
+            toast.error(i18n.t('toast.error'));
+            qc.invalidateQueries({ queryKey: ticketKeys.all });
+        },
     });
 };

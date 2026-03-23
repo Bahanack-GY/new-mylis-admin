@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi } from './api';
 import type { CreateTaskDto, UpdateTaskDto } from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const taskKeys = {
     all: ['tasks'] as const,
@@ -34,10 +35,10 @@ export const useCreateTask = () => {
     return useMutation({
         mutationFn: (dto: CreateTaskDto) => tasksApi.create(dto),
         onSuccess: () => {
-            toast.success('Task created');
+            toast.success(i18n.t('toast.taskCreated'));
             qc.invalidateQueries({ queryKey: taskKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -47,11 +48,11 @@ export const useUpdateTask = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateTaskDto }) =>
             tasksApi.update(id, dto),
         onSuccess: (_, { id }) => {
-            toast.success('Task updated');
+            toast.success(i18n.t('toast.taskUpdated'));
             qc.invalidateQueries({ queryKey: taskKeys.all });
             qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -67,10 +68,10 @@ export const useDeleteTask = () => {
     return useMutation({
         mutationFn: (id: string) => tasksApi.delete(id),
         onSuccess: () => {
-            toast.success('Task deleted');
+            toast.success(i18n.t('toast.taskDeleted'));
             qc.invalidateQueries({ queryKey: taskKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 

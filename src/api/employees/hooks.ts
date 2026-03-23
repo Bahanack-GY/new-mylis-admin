@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { employeesApi } from './api';
 import type { CreateEmployeeDto, UpdateEmployeeDto} from './types';
 import { toast } from 'sonner';
+import i18n from '../../i18n/config';
 
 export const employeeKeys = {
     all: ['employees'] as const,
@@ -32,10 +33,10 @@ export const useCreateEmployee = () => {
     return useMutation({
         mutationFn: (dto: CreateEmployeeDto) => employeesApi.create(dto),
         onSuccess: () => {
-            toast.success('Employee created');
+            toast.success(i18n.t('toast.employeeCreated'));
             qc.invalidateQueries({ queryKey: employeeKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -45,11 +46,11 @@ export const useUpdateEmployee = () => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateEmployeeDto }) =>
             employeesApi.update(id, dto),
         onSuccess: (_, { id }) => {
-            toast.success('Employee updated');
+            toast.success(i18n.t('toast.employeeUpdated'));
             qc.invalidateQueries({ queryKey: employeeKeys.all });
             qc.invalidateQueries({ queryKey: employeeKeys.detail(id) });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -58,10 +59,10 @@ export const useDeleteEmployee = () => {
     return useMutation({
         mutationFn: (id: string) => employeesApi.delete(id),
         onSuccess: () => {
-            toast.success('Employee deleted');
+            toast.success(i18n.t('toast.employeeDeleted'));
             qc.invalidateQueries({ queryKey: employeeKeys.all });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -70,11 +71,11 @@ export const useDismissEmployee = () => {
     return useMutation({
         mutationFn: (id: string) => employeesApi.dismiss(id),
         onSuccess: (_, id) => {
-            toast.success('Employee dismissed');
+            toast.success(i18n.t('toast.employeeDismissed'));
             qc.invalidateQueries({ queryKey: employeeKeys.all });
             qc.invalidateQueries({ queryKey: employeeKeys.detail(id) });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -83,11 +84,11 @@ export const useReinstateEmployee = () => {
     return useMutation({
         mutationFn: (id: string) => employeesApi.reinstate(id),
         onSuccess: (_, id) => {
-            toast.success('Employee reinstated');
+            toast.success(i18n.t('toast.employeeReinstated'));
             qc.invalidateQueries({ queryKey: employeeKeys.all });
             qc.invalidateQueries({ queryKey: employeeKeys.detail(id) });
         },
-        onError: () => toast.error('Something went wrong'),
+        onError: () => toast.error(i18n.t('toast.error')),
     });
 };
 
@@ -95,8 +96,8 @@ export const useChangeEmployeePassword = () =>
     useMutation({
         mutationFn: ({ id, password }: { id: string; password: string }) =>
             employeesApi.changePassword(id, password),
-        onSuccess: () => toast.success('Password changed'),
-        onError: () => toast.error('Failed to change password'),
+        onSuccess: () => toast.success(i18n.t('toast.passwordChanged')),
+        onError: () => toast.error(i18n.t('toast.passwordChangeFailed')),
     });
 
 export const useEmployeeStats = (id: string | number) =>

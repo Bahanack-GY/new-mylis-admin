@@ -40,6 +40,13 @@ export const invoicesApi = {
         if (to) params.to = to;
         return api.get<InvoiceStats>('/invoices/stats', { params }).then(r => r.data);
     },
+
+    getRevenueByDepartment: (from?: string, to?: string) => {
+        const params: Record<string, string> = {};
+        if (from) params.from = from;
+        if (to) params.to = to;
+        return api.get<{ departmentId: string; department: string; revenue: number }[]>('/invoices/revenue-by-department', { params }).then(r => r.data);
+    },
 };
 
 export const invoiceTemplatesApi = {

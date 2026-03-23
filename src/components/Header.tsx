@@ -3,14 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../api/notifications/hooks';
+import { useChannels } from '../api/chat/hooks';
 
 const Header = () => {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const { user: profile } = useAuth();
     const { data: notifications = [] } = useNotifications();
+    const { data: channels = [] } = useChannels();
 
     const unreadCount = notifications.filter(n => !n.read).length;
+    const unreadMessages = channels.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
     const toggleLanguage = () => {
         i18n.changeLanguage(i18n.language === 'en' ? 'fr' : 'en');
@@ -67,6 +70,11 @@ const Header = () => {
                     </button>
                     <button onClick={() => navigate('/messages')} className="relative p-2 hover:bg-gray-50 rounded-full transition-colors text-gray-500">
                         <Mail size={20} />
+                        {unreadMessages > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center px-1 text-[10px] font-bold text-white bg-[#33cbcc] rounded-full leading-none">
+                                {unreadMessages > 99 ? '99+' : unreadMessages}
+                            </span>
+                        )}
                     </button>
                 </div>
 
